@@ -1,5 +1,6 @@
 import axios from "axios";
 import type { DashboardData, DailyUpdate, Filters, User } from "../types";
+import { isOfflineMode, offline } from "../offline/api";
 
 const api = axios.create({ baseURL: "/api" });
 
@@ -8,21 +9,6 @@ api.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
-
-export async function login(email: string, password: string) {
-  const { data } = await api.post("/auth/login", { email, password });
-  return data as { token: string; user: User };
-}
-
-export async function me() {
-  const { data } = await api.get("/auth/me");
-  return data.user as User;
-}
-
-export async function getMeta() {
-  const { data } = await api.get("/meta");
-  return data;
-}
 
 export function filterParams(filters: Filters) {
   const params: Record<string, string> = { preset: filters.preset };
@@ -35,76 +21,112 @@ export function filterParams(filters: Filters) {
   return params;
 }
 
+export async function login(email: string, password: string) {
+  if (isOfflineMode()) return offline.login(email, password);
+  const { data } = await api.post("/auth/login", { email, password });
+  return data as { token: string; user: User };
+}
+
+export async function me() {
+  if (isOfflineMode()) return offline.me();
+  const { data } = await api.get("/auth/me");
+  return data.user as User;
+}
+
+export async function getMeta() {
+  if (isOfflineMode()) return offline.getMeta();
+  const { data } = await api.get("/meta");
+  return data;
+}
+
 export async function getDashboard(filters: Filters) {
+  if (isOfflineMode()) return offline.getDashboard(filters) as DashboardData;
   const { data } = await api.get("/dashboard", { params: filterParams(filters) });
   return data as DashboardData;
 }
 
 export async function getWeekly(weekStart: string) {
+  if (isOfflineMode()) return offline.getWeekly(weekStart);
   const { data } = await api.get("/reports/weekly", { params: { weekStart } });
   return data;
 }
 
 export async function getBimonthly(startDate: string, endDate: string) {
+  if (isOfflineMode()) return offline.getBimonthly(startDate, endDate);
   const { data } = await api.get("/reports/bimonthly", { params: { startDate, endDate } });
   return data;
 }
 
 export async function getModuleDetail(id: string) {
+  if (isOfflineMode()) return offline.getModuleDetail(id);
   const { data } = await api.get(`/modules/${id}/detail`);
   return data;
 }
 
 export async function listUpdates(params?: Record<string, string>) {
+  if (isOfflineMode()) return offline.listUpdates() as DailyUpdate[];
   const { data } = await api.get("/daily-updates", { params });
   return data as DailyUpdate[];
 }
 
 export async function lookupUpdate(params: Record<string, string>) {
+  if (isOfflineMode()) return offline.lookupUpdate(params) as DailyUpdate | null;
   const { data } = await api.get("/daily-updates/lookup", { params });
   return data.existing as DailyUpdate | null;
 }
 
 export async function saveUpdate(payload: Partial<DailyUpdate>, filters: Filters) {
+  if (isOfflineMode()) return offline.saveUpdate(payload, filters) as { update: DailyUpdate; dashboard: DashboardData; replaced: boolean };
   const { data } = await api.post("/daily-updates", payload, { params: filterParams(filters) });
   return data as { update: DailyUpdate; dashboard: DashboardData; replaced: boolean };
 }
 
 export async function deleteUpdate(id: string) {
+  if (isOfflineMode()) return;
   await api.delete(`/daily-updates/${id}`);
 }
 
 export async function saveUser(payload: Partial<User> & { password?: string }, id?: string) {
+  if (isOfflineMode()) return offline.saveUser(payload, id);
   const { data } = id ? await api.put(`/users/${id}`, payload) : await api.post("/users", payload);
   return data as User;
 }
 
 export async function resolveQaName(name: string) {
+  if (isOfflineMode()) return offline.resolveQaName(name);
   const { data } = await api.post("/users/resolve", { name });
   return data as User;
 }
 
 export async function listUsers() {
+  if (isOfflineMode()) return offline.listUsers();
   const { data } = await api.get("/users");
   return data as User[];
 }
 
 export async function saveModule(payload: Record<string, unknown>, id?: string) {
+  if (isOfflineMode()) return offline.saveModule(payload, id);
   const { data } = id ? await api.put(`/modules/${id}`, payload) : await api.post("/modules", payload);
   return data;
 }
 
 export async function saveSprint(payload: Record<string, unknown>, id?: string) {
+  if (isOfflineMode()) return offline.saveSprint(payload, id);
   const { data } = id ? await api.put(`/sprints/${id}`, payload) : await api.post("/sprints", payload);
   return data;
 }
 
 export async function saveConfig(payload: Record<string, unknown>) {
+  if (isOfflineMode()) return offline.saveConfig(payload);
   const { data } = await api.put("/config", payload);
   return data;
 }
 
 export async function downloadExcel(filters: Filters) {
+  if (isOfflineMode()) {
+    offline.downloadExcel(filters);
+    return;
+  }
   const { data } = await api.get("/export/excel", {
     params: filterParams(filters),
     responseType: "blob",

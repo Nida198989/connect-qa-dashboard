@@ -2,6 +2,12 @@
 
 A client-ready **QA Command Center** for the Connect program. QA engineers enter daily automation and testing progress. The system calculates weekly, sprint, module, UI, API, team, and overall coverage from live data — nothing on the dashboard is hard-coded.
 
+## Live URL
+
+https://nida198989.github.io/connect-qa-dashboard/
+
+Sign in with `nida.naaz@connect.qa` / `Connect@123`.
+
 ## Stack
 
 - Frontend: React 18 + TypeScript + Vite + Material UI + Recharts + Day.js

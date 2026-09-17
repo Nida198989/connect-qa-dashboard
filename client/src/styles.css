@@ -1,0 +1,24 @@
+html, body, #root {
+  min-height: 100%;
+}
+
+body {
+  background: #f3f6fb;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .MuiDrawer-root,
+  .MuiAppBar-root {
+    display: none !important;
+  }
+  main {
+    margin-left: 0 !important;
+    padding-top: 16px !important;
+  }
+  body {
+    background: white;
+  }
+}

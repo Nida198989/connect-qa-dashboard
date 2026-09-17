@@ -1,0 +1,138 @@
+import {
+  Assessment,
+  AutoAwesome,
+  CalendarMonth,
+  Dashboard,
+  Groups,
+  Hub,
+  Logout,
+  PictureAsPdf,
+  Settings,
+  Speed,
+  TableChart,
+  Visibility,
+} from "@mui/icons-material";
+import {
+  AppBar,
+  Box,
+  Button,
+  Chip,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Stack,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../auth";
+import { downloadExcel } from "../api/client";
+import { useApp } from "../appState";
+
+const drawerWidth = 268;
+
+const nav = [
+  { to: "/", label: "Dashboard", icon: <Dashboard />, roles: ["qa", "lead", "admin"] },
+  { to: "/daily", label: "Daily Update", icon: <CalendarMonth />, roles: ["qa", "lead", "admin"] },
+  { to: "/modules", label: "Module Progress", icon: <Hub />, roles: ["qa", "lead", "admin"] },
+  { to: "/sprints", label: "Sprint Progress", icon: <Speed />, roles: ["qa", "lead", "admin"] },
+  { to: "/team", label: "Team Progress", icon: <Groups />, roles: ["qa", "lead", "admin"], hideInClient: true },
+  { to: "/api-automation", label: "API Automation", icon: <AutoAwesome />, roles: ["qa", "lead", "admin"] },
+  { to: "/ui-automation", label: "UI Automation", icon: <Assessment />, roles: ["qa", "lead", "admin"] },
+  { to: "/reports", label: "Reports", icon: <TableChart />, roles: ["qa", "lead", "admin"] },
+  { to: "/client", label: "Client View", icon: <Visibility />, roles: ["qa", "lead", "admin"] },
+  { to: "/admin", label: "Administration", icon: <Settings />, roles: ["lead", "admin"], hideInClient: true },
+];
+
+export function AppShell() {
+  const { user, logout } = useAuth();
+  const { filters, clientView, setClientView } = useApp();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const items = nav.filter((item) => user && item.roles.includes(user.role) && !(clientView && item.hideInClient));
+
+  return (
+    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+      <AppBar position="fixed" elevation={0} sx={{ bgcolor: "#0b1220", borderBottom: "1px solid #1e293b", width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}>
+        <Toolbar sx={{ gap: 2 }}>
+          <Typography variant="h6" sx={{ color: "white", fontWeight: 800 }}>
+            Connect QA Command Center
+          </Typography>
+          <Chip size="small" label="Quality Engineering" sx={{ bgcolor: "#1d4ed8", color: "white" }} />
+          <Box flex={1} />
+          <Button
+            className="no-print"
+            color="inherit"
+            startIcon={<Visibility />}
+            onClick={() => {
+              setClientView(!clientView);
+              navigate(clientView ? "/" : "/client");
+            }}
+          >
+            {clientView ? "Internal View" : "Client View"}
+          </Button>
+          {(user?.role === "lead" || user?.role === "admin") && (
+            <Button className="no-print" color="inherit" onClick={() => downloadExcel(filters)}>
+              Export Excel
+            </Button>
+          )}
+          <Button className="no-print" color="inherit" startIcon={<PictureAsPdf />} onClick={() => window.print()}>
+            Export PDF
+          </Button>
+          <Chip label={user?.name} sx={{ bgcolor: "#312e81", color: "white" }} />
+          <IconButton className="no-print" color="inherit" onClick={logout}>
+            <Logout />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <Drawer
+        variant="permanent"
+        className="no-print"
+        sx={{
+          width: drawerWidth,
+          [`& .MuiDrawer-paper`]: {
+            width: drawerWidth,
+            bgcolor: "#111827",
+            color: "white",
+            borderRight: "1px solid #1f2937",
+            pt: 9,
+          },
+        }}
+      >
+        <List sx={{ px: 1 }}>
+          {items.map((item) => (
+            <ListItemButton
+              key={item.to}
+              component={NavLink}
+              to={item.to}
+              selected={location.pathname === item.to}
+              sx={{
+                borderRadius: 2,
+                mb: 0.5,
+                color: "#cbd5e1",
+                "&.active, &.Mui-selected": { bgcolor: "#1d4ed8", color: "white" },
+              }}
+            >
+              <ListItemIcon sx={{ color: "inherit", minWidth: 40 }}>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          ))}
+        </List>
+        <Divider sx={{ borderColor: "#1f2937", my: 1 }} />
+        <Box sx={{ px: 2, color: "#94a3b8" }}>
+          <Typography variant="caption">Signed in as {user?.role?.toUpperCase()}</Typography>
+        </Box>
+      </Drawer>
+      <Box component="main" sx={{ flexGrow: 1, ml: `${drawerWidth}px`, pt: 11, px: { xs: 2, md: 3 }, pb: 4 }}>
+        <Stack spacing={2.5}>
+          <Outlet />
+        </Stack>
+      </Box>
+    </Box>
+  );
+}

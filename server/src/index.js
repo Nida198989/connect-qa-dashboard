@@ -8,7 +8,7 @@ const { v4: uuid } = require("uuid");
 const ExcelJS = require("exceljs");
 const { getDb, saveDb, reloadDb } = require("./db");
 const { seed } = require("./seed");
-const { WORK_TYPES, ROLES, DEFAULT_CONFIG } = require("./constants");
+const { WORK_TYPES, ROLES, PROJECTS, DEFAULT_CONFIG } = require("./constants");
 const {
   buildDashboard,
   weeklyStatus,
@@ -79,6 +79,8 @@ app.get("/api/meta", auth(), (req, res) => {
     users: db.users.filter((u) => u.active).map(publicUser),
     modules: db.modules,
     sprints: db.sprints,
+    risks: db.risks || [],
+    projects: PROJECTS,
     config: { ...DEFAULT_CONFIG, ...db.config },
   });
 });
@@ -169,10 +171,10 @@ app.get("/api/daily-updates", auth(), (req, res) => {
 });
 
 app.get("/api/daily-updates/lookup", auth(), (req, res) => {
-  const { date, userId, moduleId, userStory } = req.query;
+  const { date, userId, moduleId, userStory, project } = req.query;
   const targetUser = req.user.role === "qa" ? req.user.id : userId;
   const match = getDb().dailyUpdates.find(
-    (row) => uniqueKey(row) === uniqueKey({ date, userId: targetUser, moduleId, userStory })
+    (row) => uniqueKey(row) === uniqueKey({ date, userId: targetUser, moduleId, userStory, project: project || "Connect" })
   );
   res.json({ existing: match ? enrichUpdate(match, getDb()) : null });
 });
@@ -369,11 +371,12 @@ app.post("/api/modules/resolve", auth(), (req, res) => {
   const name = String(req.body?.name || "").trim();
   if (!name) return res.status(400).json({ message: "Module is mandatory." });
   const db = getDb();
-  const existing = db.modules.find((m) => m.name.toLowerCase() === name.toLowerCase());
+  const existing = db.modules.find((m) => m.name.toLowerCase() === name.toLowerCase() && (m.project || "Connect") === (req.body.project === "Force" ? "Force" : "Connect"));
   if (existing) return res.json(existing);
   const mod = {
     id: uuid(),
     name,
+    project: req.body.project === "Force" ? "Force" : "Connect",
     totalTestCases: Number(req.body.totalTestCases) || 0,
     manualWritten: 0,
     uiAutomated: 0,
@@ -392,13 +395,14 @@ app.post("/api/sprints/resolve", auth(), (req, res) => {
   const sprintName = String(req.body?.sprintName || req.body?.name || "").trim();
   if (!sprintName) return res.status(400).json({ message: "Sprint is mandatory." });
   const db = getDb();
-  const existing = db.sprints.find((s) => s.sprintName.toLowerCase() === sprintName.toLowerCase());
+  const existing = db.sprints.find((s) => s.sprintName.toLowerCase() === sprintName.toLowerCase() && (s.project || "Connect") === (req.body.project === "Force" ? "Force" : "Connect"));
   if (existing) return res.json(existing);
   const today = new Date().toISOString().slice(0, 10);
   const end = new Date(Date.now() + 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
   const sprint = {
     id: uuid(),
     sprintName,
+    project: req.body.project === "Force" ? "Force" : "Connect",
     startDate: req.body.startDate || today,
     endDate: req.body.endDate || end,
     plannedTestCases: Number(req.body.plannedTestCases) || 0,
@@ -419,6 +423,8 @@ app.post("/api/modules", auth(["lead", "admin"]), (req, res) => {
   const mod = {
     id: uuid(),
     name: body.name,
+    project: body.project === "Force" ? "Force" : "Connect",
+    isFeeShare: Boolean(body.isFeeShare),
     totalTestCases: Number(body.totalTestCases) || 0,
     manualWritten: Number(body.manualWritten) || 0,
     uiAutomated: Number(body.uiAutomated) || 0,
@@ -446,6 +452,8 @@ app.put("/api/modules/:id", auth(["lead", "admin"]), (req, res) => {
       updated = {
         ...mod,
         name: req.body.name ?? mod.name,
+        project: req.body.project ?? mod.project ?? "Connect",
+        isFeeShare: req.body.isFeeShare != null ? Boolean(req.body.isFeeShare) : Boolean(mod.isFeeShare),
         totalTestCases: req.body.totalTestCases != null ? Number(req.body.totalTestCases) : mod.totalTestCases,
         manualWritten: req.body.manualWritten != null ? Number(req.body.manualWritten) : mod.manualWritten,
         uiAutomated: req.body.uiAutomated != null ? Number(req.body.uiAutomated) : mod.uiAutomated,
@@ -460,13 +468,14 @@ app.put("/api/modules/:id", auth(["lead", "admin"]), (req, res) => {
 });
 
 app.post("/api/sprints", auth(["lead", "admin"]), (req, res) => {
-  const { sprintName, startDate, endDate, plannedTestCases } = req.body || {};
+  const { sprintName, startDate, endDate, plannedTestCases, project } = req.body || {};
   if (!sprintName || !startDate || !endDate) {
     return res.status(400).json({ message: "Sprint name, start date, and end date are required." });
   }
   const sprint = {
     id: uuid(),
     sprintName,
+    project: project === "Force" ? "Force" : "Connect",
     startDate,
     endDate,
     plannedTestCases: Number(plannedTestCases) || 0,
@@ -526,6 +535,7 @@ app.put("/api/sprints/:id", auth(), (req, res) => {
         startDate: isManager ? req.body.startDate ?? sprint.startDate : sprint.startDate,
         endDate: isManager ? req.body.endDate ?? sprint.endDate : sprint.endDate,
         plannedTestCases: isManager && req.body.plannedTestCases != null ? Number(req.body.plannedTestCases) : sprint.plannedTestCases,
+        project: isManager && req.body.project ? (req.body.project === "Force" ? "Force" : "Connect") : sprint.project,
       };
       return updated;
     });
@@ -538,7 +548,7 @@ app.get("/api/config", auth(), (req, res) => {
   res.json({ ...DEFAULT_CONFIG, ...getDb().config });
 });
 
-app.put("/api/config", auth(["admin"]), (req, res) => {
+app.put("/api/config", auth(["admin", "lead"]), (req, res) => {
   let next;
   saveDb((state) => {
     next = { ...DEFAULT_CONFIG, ...state.config, ...req.body };
@@ -609,6 +619,55 @@ app.get("/api/export/excel", auth(["lead", "admin"]), async (req, res) => {
   res.setHeader("Content-Disposition", "attachment; filename=connect-qa-report.xlsx");
   await workbook.xlsx.write(res);
   res.end();
+});
+
+app.get("/api/risks", auth(), (req, res) => {
+  const project = req.query.project;
+  const rows = getDb().risks || [];
+  res.json(project ? rows.filter((r) => (r.project || "Connect") === project) : rows);
+});
+
+app.post("/api/risks", auth(), (req, res) => {
+  const { title, project, impact, owner, status = "Open", expectedResolution = "" } = req.body || {};
+  if (!title) return res.status(400).json({ message: "Risk / blocker is required." });
+  const risk = {
+    id: uuid(),
+    title: String(title).trim(),
+    project: project === "Force" ? "Force" : "Connect",
+    impact: String(impact || "").trim(),
+    owner: String(owner || "").trim(),
+    status: ["Open", "In Progress", "Resolved"].includes(status) ? status : "Open",
+    expectedResolution: String(expectedResolution || ""),
+  };
+  saveDb((state) => {
+    if (!state.risks) state.risks = [];
+    state.risks.push(risk);
+    return state;
+  });
+  res.json(risk);
+});
+
+app.put("/api/risks/:id", auth(), (req, res) => {
+  const current = (getDb().risks || []).find((r) => r.id === req.params.id);
+  if (!current) return res.status(404).json({ message: "Risk not found." });
+  let updated;
+  saveDb((state) => {
+    state.risks = (state.risks || []).map((risk) => {
+      if (risk.id !== req.params.id) return risk;
+      updated = { ...risk, ...req.body, project: req.body.project === "Force" ? "Force" : risk.project || "Connect" };
+      return updated;
+    });
+    return state;
+  });
+  res.json(updated);
+});
+
+app.delete("/api/risks/:id", auth(["lead", "admin"]), (req, res) => {
+  saveDb((state) => {
+    state.risks = (state.risks || []).filter((r) => r.id !== req.params.id);
+    return state;
+  });
+  res.json({ ok: true });
 });
 
 app.post("/api/seed", auth(["admin"]), (req, res) => {

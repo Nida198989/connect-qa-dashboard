@@ -22,6 +22,7 @@ export function createSeed() {
     sprints: [],
     dailyUpdates: [],
     auditLogs: [],
+    risks: [],
     config: { ...DEFAULT_CONFIG, currentSprintId: "", clientFocus: "", clientRisks: "", clientAchievements: "" },
   };
 }

@@ -10,6 +10,7 @@ function asInt(value, fallback = 0) {
 function validateDailyPayload(body) {
   const errors = [];
   if (!body.date) errors.push("Date is mandatory.");
+  if (!body.project || !["Connect", "Force"].includes(body.project)) errors.push("Project is mandatory.");
   if (!body.userId) errors.push("QA name is mandatory.");
   if (!body.moduleId) errors.push("Module is mandatory.");
   if (!body.sprintId) errors.push("Sprint is mandatory.");
@@ -74,6 +75,7 @@ function validateAgainstBaselines(db, payload, numbers, existingId) {
 function uniqueKey(payload) {
   return [
     payload.date,
+    payload.project || "Connect",
     payload.userId,
     payload.moduleId,
     String(payload.userStory || "").trim().toLowerCase(),

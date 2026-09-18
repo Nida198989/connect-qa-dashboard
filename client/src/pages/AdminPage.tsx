@@ -13,16 +13,17 @@ export function AdminPage() {
   const [error, setError] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>(users);
   const [userForm, setUserForm] = useState({ name: "", email: "", role: "qa", password: "Connect@123" });
-  const [moduleForm, setModuleForm] = useState({ name: "", totalTestCases: 0, manualWritten: 0, uiAutomated: 0, apiRecorded: 0, apiAutomated: 0 });
-  const [sprintForm, setSprintForm] = useState({ sprintName: "", startDate: "", endDate: "", plannedTestCases: 0 });
+  const [moduleForm, setModuleForm] = useState({ name: "", project: "Connect", isFeeShare: false, totalTestCases: 0, manualWritten: 0, uiAutomated: 0, apiRecorded: 0, apiAutomated: 0 });
+  const [sprintForm, setSprintForm] = useState({ sprintName: "", project: "Connect", startDate: "", endDate: "", plannedTestCases: 0 });
   const [cfg, setCfg] = useState(config);
 
   useEffect(() => {
     setAllUsers(users);
+    if (config) setCfg(config);
     if (user?.role === "admin" || user?.role === "lead") {
       listUsers().then(setAllUsers).catch(() => undefined);
     }
-  }, [users, user?.role]);
+  }, [users, user?.role, config]);
 
   async function run(action: () => Promise<unknown>, success: string) {
     setError("");
@@ -63,7 +64,7 @@ export function AdminPage() {
                 <Grid item xs={12} md={2}><TextField fullWidth label="Password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} /></Grid>
               </>
             )}
-            <Grid item xs={12} md={2}><Button variant="contained" onClick={() => run(() => saveUser(userForm), "QA added.")}>Add QA</Button></Grid>
+            <Grid item xs={12} md={2}><Button variant="contained" onClick={() => run(() => saveUser({ ...userForm, role: userForm.role as User["role"] }), "QA added.")}>Add QA</Button></Grid>
           </Grid>
           <div style={{ height: 320, marginTop: 16 }}>
             <DataGrid
@@ -94,22 +95,36 @@ export function AdminPage() {
         </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} md={3}><TextField fullWidth label="Name" value={moduleForm.name} onChange={(e) => setModuleForm({ ...moduleForm, name: e.target.value })} /></Grid>
+          <Grid item xs={12} md={2}>
+            <TextField select fullWidth label="Project" value={moduleForm.project} onChange={(e) => setModuleForm({ ...moduleForm, project: e.target.value })}>
+              <MenuItem value="Connect">Connect</MenuItem>
+              <MenuItem value="Force">Force</MenuItem>
+            </TextField>
+          </Grid>
+          <Grid item xs={12} md={2}>
+            <TextField select fullWidth label="FeeShare" value={moduleForm.isFeeShare ? "yes" : "no"} onChange={(e) => setModuleForm({ ...moduleForm, isFeeShare: e.target.value === "yes" })}>
+              <MenuItem value="no">No</MenuItem>
+              <MenuItem value="yes">Yes</MenuItem>
+            </TextField>
+          </Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="number" label="Total TC" value={moduleForm.totalTestCases} onChange={(e) => setModuleForm({ ...moduleForm, totalTestCases: Number(e.target.value) })} /></Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="number" label="Manual" value={moduleForm.manualWritten} onChange={(e) => setModuleForm({ ...moduleForm, manualWritten: Number(e.target.value) })} /></Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="number" label="UI Automated" value={moduleForm.uiAutomated} onChange={(e) => setModuleForm({ ...moduleForm, uiAutomated: Number(e.target.value) })} /></Grid>
-          <Grid item xs={6} md={1.5}><TextField fullWidth type="number" label="API Rec." value={moduleForm.apiRecorded} onChange={(e) => setModuleForm({ ...moduleForm, apiRecorded: Number(e.target.value) })} /></Grid>
-          <Grid item xs={6} md={1.5}><Button variant="contained" onClick={() => run(() => saveModule(moduleForm), "Module added.")}>Add Module</Button></Grid>
+          <Grid item xs={6} md={2}><TextField fullWidth type="number" label="API Rec." value={moduleForm.apiRecorded} onChange={(e) => setModuleForm({ ...moduleForm, apiRecorded: Number(e.target.value) })} /></Grid>
+          <Grid item xs={6} md={2}><Button variant="contained" onClick={() => run(() => saveModule(moduleForm), "Module added.")}>Add Module</Button></Grid>
         </Grid>
         <div style={{ height: 380, marginTop: 16 }}>
           <DataGrid
             rows={modules}
             columns={[
-              { field: "name", headerName: "Module", flex: 1, minWidth: 180 },
-              { field: "totalTestCases", headerName: "Total TC", width: 110 },
-              { field: "manualWritten", headerName: "Manual", width: 110 },
-              { field: "uiAutomated", headerName: "UI Baseline", width: 120 },
-              { field: "apiRecorded", headerName: "API Rec.", width: 110 },
-              { field: "apiAutomated", headerName: "API Auto", width: 110 },
+              { field: "name", headerName: "Module", flex: 1, minWidth: 180, editable: true },
+              { field: "project", headerName: "Project", width: 110, editable: true },
+              { field: "isFeeShare", headerName: "FeeShare", width: 110, type: "boolean", editable: true },
+              { field: "totalTestCases", headerName: "Total TC", width: 110, editable: true },
+              { field: "manualWritten", headerName: "Manual", width: 110, editable: true },
+              { field: "uiAutomated", headerName: "UI Baseline", width: 120, editable: true },
+              { field: "apiRecorded", headerName: "API Rec.", width: 110, editable: true },
+              { field: "apiAutomated", headerName: "API Auto", width: 110, editable: true },
             ]}
             processRowUpdate={async (next) => {
               await saveModule({ ...next, baselineChange: true }, next.id);
@@ -127,6 +142,12 @@ export function AdminPage() {
         </Typography>
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={12} md={3}><TextField fullWidth label="Sprint name" value={sprintForm.sprintName} onChange={(e) => setSprintForm({ ...sprintForm, sprintName: e.target.value })} /></Grid>
+          <Grid item xs={12} md={2}>
+            <TextField select fullWidth label="Project" value={sprintForm.project} onChange={(e) => setSprintForm({ ...sprintForm, project: e.target.value })}>
+              <MenuItem value="Connect">Connect</MenuItem>
+              <MenuItem value="Force">Force</MenuItem>
+            </TextField>
+          </Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="date" label="Start" InputLabelProps={{ shrink: true }} value={sprintForm.startDate} onChange={(e) => setSprintForm({ ...sprintForm, startDate: e.target.value })} /></Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="date" label="End" InputLabelProps={{ shrink: true }} value={sprintForm.endDate} onChange={(e) => setSprintForm({ ...sprintForm, endDate: e.target.value })} /></Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="number" label="Planned TC" value={sprintForm.plannedTestCases} onChange={(e) => setSprintForm({ ...sprintForm, plannedTestCases: Number(e.target.value) })} /></Grid>
@@ -137,6 +158,7 @@ export function AdminPage() {
             rows={sprints}
             columns={[
               { field: "sprintName", headerName: "Sprint", flex: 1, minWidth: 140 },
+              { field: "project", headerName: "Project", width: 110, editable: true },
               { field: "startDate", headerName: "Start", width: 120 },
               { field: "endDate", headerName: "End", width: 120 },
               { field: "plannedTestCases", headerName: "Planned TC", width: 120 },
@@ -149,6 +171,7 @@ export function AdminPage() {
               await saveSprint(
                 {
                   sprintName: next.sprintName,
+                  project: next.project === "Force" ? "Force" : "Connect",
                   startDate: next.startDate,
                   endDate: next.endDate,
                   plannedTestCases: next.plannedTestCases,
@@ -166,6 +189,72 @@ export function AdminPage() {
           />
         </div>
       </Card>
+
+      {cfg && (user?.role === "lead" || user?.role === "admin") && (
+        <Card sx={{ p: 3 }}>
+          <Typography variant="h6">Weekly highlights (editable, no code change)</Typography>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>Shown on the executive, Connect, Force, and client views.</Typography>
+          <Grid container spacing={2}>
+            {(["Connect", "Force"] as const).map((project) => (
+              <Grid item xs={12} md={6} key={project}>
+                <Typography variant="subtitle1" sx={{ mb: 1 }}>{project}</Typography>
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="This Week — Highlights"
+                  sx={{ mb: 1.5 }}
+                  value={cfg.weeklyHighlights?.[project]?.thisWeek || ""}
+                  onChange={(e) => setCfg({
+                    ...cfg,
+                    weeklyHighlights: {
+                      Connect: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Connect },
+                      Force: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Force },
+                      [project]: { ...(cfg.weeklyHighlights?.[project] || { thisWeek: "", nextWeek: "", attention: "" }), thisWeek: e.target.value },
+                    },
+                  })}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Next Week — Planned"
+                  sx={{ mb: 1.5 }}
+                  value={cfg.weeklyHighlights?.[project]?.nextWeek || ""}
+                  onChange={(e) => setCfg({
+                    ...cfg,
+                    weeklyHighlights: {
+                      Connect: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Connect },
+                      Force: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Force },
+                      [project]: { ...(cfg.weeklyHighlights?.[project] || { thisWeek: "", nextWeek: "", attention: "" }), nextWeek: e.target.value },
+                    },
+                  })}
+                />
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  label="Client Attention Required"
+                  value={cfg.weeklyHighlights?.[project]?.attention || ""}
+                  onChange={(e) => setCfg({
+                    ...cfg,
+                    weeklyHighlights: {
+                      Connect: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Connect },
+                      Force: { thisWeek: "", nextWeek: "", attention: "", ...cfg.weeklyHighlights?.Force },
+                      [project]: { ...(cfg.weeklyHighlights?.[project] || { thisWeek: "", nextWeek: "", attention: "" }), attention: e.target.value },
+                    },
+                  })}
+                />
+              </Grid>
+            ))}
+            <Grid item xs={12}>
+              <Button variant="contained" onClick={() => run(() => saveConfig({ weeklyHighlights: cfg.weeklyHighlights, clientAchievements: cfg.clientAchievements, clientFocus: cfg.clientFocus, clientRisks: cfg.clientRisks }), "Weekly highlights saved.")}>
+                Save weekly highlights
+              </Button>
+            </Grid>
+          </Grid>
+        </Card>
+      )}
 
       {user?.role === "admin" && cfg && (
         <Card sx={{ p: 3 }}>
@@ -190,7 +279,7 @@ export function AdminPage() {
             <Grid item xs={12}><TextField fullWidth label="Client achievements" value={cfg.clientAchievements} onChange={(e) => setCfg({ ...cfg, clientAchievements: e.target.value })} /></Grid>
             <Grid item xs={12}><TextField fullWidth label="Current focus" value={cfg.clientFocus} onChange={(e) => setCfg({ ...cfg, clientFocus: e.target.value })} /></Grid>
             <Grid item xs={12}><TextField fullWidth label="Risks / dependencies" value={cfg.clientRisks} onChange={(e) => setCfg({ ...cfg, clientRisks: e.target.value })} /></Grid>
-            <Grid item xs={12}><Button variant="contained" onClick={() => run(() => saveConfig(cfg), "Configuration saved.")}>Save configuration</Button></Grid>
+            <Grid item xs={12}><Button variant="contained" onClick={() => run(() => saveConfig(cfg as unknown as Record<string, unknown>), "Configuration saved.")}>Save configuration</Button></Grid>
           </Grid>
         </Card>
       )}

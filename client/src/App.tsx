@@ -5,6 +5,7 @@ import { AppStateProvider } from "./appState";
 import { AppShell } from "./layout/AppShell";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
+import { ProjectDashboardPage } from "./pages/ProjectDashboardPage";
 import { DailyUpdatePage } from "./pages/DailyUpdatePage";
 import { ModuleProgressPage } from "./pages/ModuleProgressPage";
 import { SprintProgressPage } from "./pages/SprintProgressPage";
@@ -14,6 +15,11 @@ import { UiAutomationPage } from "./pages/UiAutomationPage";
 import { ReportsPage } from "./pages/ReportsPage";
 import { ClientViewPage } from "./pages/ClientViewPage";
 import { AdminPage } from "./pages/AdminPage";
+import { AutomationPage } from "./pages/AutomationPage";
+import { ExecutionPage } from "./pages/ExecutionPage";
+import { DefectsPage } from "./pages/DefectsPage";
+import { RisksPage } from "./pages/RisksPage";
+import { TrendsPage } from "./pages/TrendsPage";
 
 function Guard({ children, roles }: { children: React.ReactNode; roles?: string[] }) {
   const { user, loading } = useAuth();
@@ -53,7 +59,14 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="connect" element={<ProjectDashboardPage project="Connect" />} />
+        <Route path="force" element={<ProjectDashboardPage project="Force" />} />
         <Route path="daily" element={<DailyUpdatePage />} />
+        <Route path="automation" element={<AutomationPage />} />
+        <Route path="execution" element={<ExecutionPage />} />
+        <Route path="defects" element={<DefectsPage />} />
+        <Route path="risks" element={<RisksPage />} />
+        <Route path="trends" element={<TrendsPage />} />
         <Route path="modules" element={<ModuleProgressPage />} />
         <Route path="sprints" element={<SprintProgressPage />} />
         <Route path="team" element={<TeamProgressPage />} />

@@ -87,3 +87,53 @@ export function KpiCard({
     </Card>
   );
 }
+
+export function DeltaKpiCard({
+  label,
+  current,
+  previous,
+  change,
+  changePct,
+  extra,
+  color = "blue",
+}: {
+  label: string;
+  current: string | number;
+  previous?: string | number;
+  change?: string | number;
+  changePct?: string | number | null;
+  extra?: string;
+  color?: keyof typeof palettes;
+}) {
+  const palette = palettes[color];
+  return (
+    <Card
+      sx={{
+        p: 2,
+        color: "white",
+        background: palette.bg,
+        width: "100%",
+        height: 156,
+        minHeight: 156,
+        maxHeight: 156,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      <Typography variant="caption" sx={{ color: palette.label, fontWeight: 800, letterSpacing: 0.6 }}>
+        {label}
+      </Typography>
+      <Typography variant="h4" sx={{ color: "white", lineHeight: 1, fontSize: "1.7rem" }}>
+        {current}
+      </Typography>
+      <Typography variant="caption" sx={{ color: palette.accent, lineHeight: 1.35 }}>
+        Prev: {previous ?? "N/A"} · Δ {change ?? "N/A"}
+        {changePct != null && changePct !== "" ? ` (${changePct})` : ""}
+        {extra ? ` · ${extra}` : ""}
+      </Typography>
+    </Card>
+  );
+}

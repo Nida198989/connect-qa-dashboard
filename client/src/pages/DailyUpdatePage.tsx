@@ -38,6 +38,8 @@ const numberFields: Array<{ key: keyof DailyUpdate; label: string; group: string
   { key: "mediumDefects", label: "Medium", group: "Defects" },
   { key: "lowDefects", label: "Low", group: "Defects" },
   { key: "defectsClosed", label: "Defects closed", group: "Defects" },
+  { key: "reopenedDefects", label: "Reopened defects", group: "Defects" },
+  { key: "flaky", label: "Flaky tests", group: "Manual Testing" },
 ];
 
 export function DailyUpdatePage() {
@@ -54,6 +56,8 @@ export function DailyUpdatePage() {
   const [existing, setExisting] = useState(false);
   const [busy, setBusy] = useState(false);
   const qaOptions = users.filter((u) => u.role !== "admin");
+  const projectModules = modules.filter((m) => (m.project || "Connect") === (form.project || "Connect"));
+  const projectSprints = sprints.filter((s) => (s.project || "Connect") === (form.project || "Connect"));
   const selectedQa = qaOptions.find((u) => u.id === form.userId) || null;
   const [qaName, setQaName] = useState(selectedQa?.name || (user?.role === "qa" ? user.name : ""));
   const [moduleName, setModuleName] = useState(modules.find((m) => m.id === form.moduleId)?.name || "");
@@ -66,12 +70,13 @@ export function DailyUpdatePage() {
   }, []);
 
   useEffect(() => {
-    if (!form.date || !form.userId || !form.moduleId || !form.userStory) {
+    if (!form.date || !form.userId || !form.moduleId || !form.userStory || !form.project) {
       setExisting(false);
       return;
     }
     lookupUpdate({
       date: form.date,
+      project: form.project,
       userId: form.userId,
       moduleId: form.moduleId,
       userStory: form.userStory,
@@ -86,7 +91,7 @@ export function DailyUpdatePage() {
         setExisting(false);
       }
     });
-  }, [form.date, form.userId, form.moduleId, form.userStory]);
+  }, [form.date, form.project, form.userId, form.moduleId, form.userStory]);
 
   const groups = useMemo(() => {
     return [...new Set(numberFields.map((f) => f.group))];
@@ -94,6 +99,7 @@ export function DailyUpdatePage() {
 
   const columns: GridColDef[] = [
     { field: "date", headerName: "Date", width: 120 },
+    { field: "project", headerName: "Project", width: 110 },
     { field: "qaName", headerName: "QA", width: 150 },
     { field: "moduleName", headerName: "Module", flex: 1, minWidth: 180 },
     { field: "sprintName", headerName: "Sprint", width: 120 },
@@ -108,7 +114,7 @@ export function DailyUpdatePage() {
     <Stack spacing={2.5}>
       <Typography variant="h4">Daily Update</Typography>
       <Typography color="text.secondary">
-        One record is kept for the same Date + QA + Module + User Story. Type a new QA, module, or sprint name to add it. Saving again updates the existing entry.
+        One record is kept for the same Date + Project + QA + Module + User Story. Type a new QA, module, or sprint name to add it. Saving again updates the existing entry without overwriting other dates.
       </Typography>
       <Card sx={{ p: 3 }}>
         <Stack
@@ -120,8 +126,12 @@ export function DailyUpdatePage() {
             setError("");
             setMessage("");
             try {
-              if (!qaName.trim() || !moduleName.trim() || !sprintName.trim() || !form.workType) {
-                setError("Date, QA name, module, sprint, user story, and work type are mandatory.");
+              if (!form.date || !form.project || !qaName.trim() || !moduleName.trim() || !sprintName.trim() || !form.workType || !String(form.userStory || "").trim()) {
+                setError("Date, project, QA name, module, sprint, user story, and work type are mandatory.");
+                return;
+              }
+              if (Number(form.passed || 0) + Number(form.failed || 0) + Number(form.blocked || 0) > Number(form.testCasesExecuted || 0)) {
+                setError("Passed + Failed + Blocked cannot exceed Tests Executed.");
                 return;
               }
               const currentQa = qaOptions.find((u) => u.id === form.userId);
@@ -131,8 +141,8 @@ export function DailyUpdatePage() {
               } else {
                 resolved = await resolveQaName(qaName.trim());
               }
-              const module = await resolveModule(moduleName.trim());
-              const sprint = await resolveSprint(sprintName.trim());
+              const module = await resolveModule(moduleName.trim(), form.project);
+              const sprint = await resolveSprint(sprintName.trim(), form.project);
               const result = await saveUpdate({ ...form, userId: resolved.id, moduleId: module.id, sprintId: sprint.id }, filters);
               set({ userId: resolved.id, qaName: resolved.name, moduleId: module.id, sprintId: sprint.id });
               setQaName(resolved.name);
@@ -152,13 +162,32 @@ export function DailyUpdatePage() {
         >
           {message && <Alert severity="success">{message}</Alert>}
           {error && <Alert severity="error">{error}</Alert>}
-          {existing && <Alert severity="info">An entry already exists for this date, QA, module, and user story. Your save will update it.</Alert>}
+          {existing && <Alert severity="info">An entry already exists for this date, project, QA, module, and user story. Your save will update it.</Alert>}
           <Alert severity="info">
             Daily total (In-Sprint + Backlog): {Number(form.inSprintAutomated || 0) + Number(form.backlogAutomated || 0)}
           </Alert>
           <Grid container spacing={2}>
             <Grid item xs={12} md={3}>
               <TextField fullWidth type="date" label="Date" InputLabelProps={{ shrink: true }} value={form.date} onChange={(e) => set({ date: e.target.value })} required />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth>
+                <InputLabel id="project-label" shrink>Project</InputLabel>
+                <Select
+                  labelId="project-label"
+                  label="Project"
+                  notched
+                  value={form.project || "Connect"}
+                  onChange={(e) => {
+                    set({ project: e.target.value as DailyUpdate["project"], moduleId: "", sprintId: "" });
+                    setModuleName("");
+                    setSprintName("");
+                  }}
+                >
+                  <MenuItem value="Connect">Connect</MenuItem>
+                  <MenuItem value="Force">Force</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={3}>
               <Autocomplete
@@ -196,9 +225,9 @@ export function DailyUpdatePage() {
                 freeSolo
                 autoSelect
                 openOnFocus
-                options={modules}
+                options={projectModules}
                 getOptionLabel={(option) => (typeof option === "string" ? option : option.name)}
-                value={modules.find((m) => m.id === form.moduleId) || null}
+                value={projectModules.find((m) => m.id === form.moduleId) || null}
                 inputValue={moduleName}
                 onInputChange={(_, value) => setModuleName(value)}
                 onChange={(_, value) => {
@@ -222,9 +251,9 @@ export function DailyUpdatePage() {
                 freeSolo
                 autoSelect
                 openOnFocus
-                options={sprints}
+                options={projectSprints}
                 getOptionLabel={(option) => (typeof option === "string" ? option : option.sprintName)}
-                value={sprints.find((s) => s.id === form.sprintId) || null}
+                value={projectSprints.find((s) => s.id === form.sprintId) || null}
                 inputValue={sprintName}
                 onInputChange={(_, value) => setSprintName(value)}
                 onChange={(_, value) => {
@@ -288,7 +317,7 @@ export function DailyUpdatePage() {
                       type="number"
                       label={field.label}
                       inputProps={{ min: 0 }}
-                      value={form[field.key] as number}
+                      value={(form as Record<string, unknown>)[field.key as string] as number}
                       onChange={(e) => set({ [field.key]: Number(e.target.value || 0) } as Partial<DailyUpdate>)}
                     />
                   </Grid>

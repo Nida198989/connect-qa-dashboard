@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from "recharts";
-import { downloadExcel, getBimonthly, getWeekly } from "../api/client";
+import { downloadCsv, downloadExcel, getBimonthly, getWeekly } from "../api/client";
 import { KpiCard } from "../components/KpiCard";
 import { useApp } from "../appState";
 import { useAuth } from "../auth";
@@ -43,9 +43,13 @@ export function ReportsPage() {
       {error && <Alert severity="error">{error}</Alert>}
       <Stack direction="row" spacing={1.5} className="no-print">
         {(user?.role === "lead" || user?.role === "admin") && (
-          <Button variant="contained" onClick={() => downloadExcel(filters)}>Export Excel</Button>
+          <>
+            <Button variant="contained" onClick={() => downloadExcel(filters)}>Export Weekly Report</Button>
+            <Button variant="outlined" onClick={() => downloadExcel(filters)}>Export Excel</Button>
+            <Button variant="outlined" onClick={() => downloadCsv(filters)}>Export CSV</Button>
+          </>
         )}
-        <Button variant="outlined" onClick={() => window.print()}>Print / PDF</Button>
+        <Button variant="outlined" onClick={() => window.print()}>Print Client Report</Button>
       </Stack>
 
       <Card sx={{ p: 3 }}>

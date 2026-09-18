@@ -11,6 +11,12 @@ const WORK_TYPES = [
 ];
 
 const ROLES = ["qa", "lead", "admin"];
+const PROJECTS = ["Connect", "Force"];
+
+const DEFAULT_HIGHLIGHTS = {
+  Connect: { thisWeek: "", nextWeek: "", attention: "" },
+  Force: { thisWeek: "", nextWeek: "", attention: "" },
+};
 
 const DEFAULT_CONFIG = {
   countingMode: "unique_test_cases",
@@ -21,6 +27,7 @@ const DEFAULT_CONFIG = {
   clientFocus: "",
   clientRisks: "",
   clientAchievements: "",
+  weeklyHighlights: DEFAULT_HIGHLIGHTS,
 };
 
 const BASELINE_MODULES = [
@@ -61,11 +68,15 @@ const NUMERIC_FIELDS = [
   "mediumDefects",
   "lowDefects",
   "defectsClosed",
+  "flaky",
+  "reopenedDefects",
 ];
 
 module.exports = {
   WORK_TYPES,
   ROLES,
+  PROJECTS,
+  DEFAULT_HIGHLIGHTS,
   DEFAULT_CONFIG,
   BASELINE_MODULES,
   NUMERIC_FIELDS,

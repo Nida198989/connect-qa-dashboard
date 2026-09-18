@@ -1,4 +1,5 @@
 export type Role = "qa" | "lead" | "admin";
+export type ProjectName = "Connect" | "Force";
 
 export interface User {
   id: string;
@@ -11,6 +12,8 @@ export interface User {
 export interface Module {
   id: string;
   name: string;
+  project?: ProjectName;
+  isFeeShare?: boolean;
   totalTestCases: number;
   manualWritten: number;
   uiAutomated: number;
@@ -36,12 +39,19 @@ export interface ModuleCurrent {
   totalAutomated: number;
   remaining: number;
   coverage: number;
+  testCasesExecuted?: number;
+  passed?: number;
+  failed?: number;
+  blocked?: number;
+  defectsRaised?: number;
+  defectsClosed?: number;
   status: StatusTone;
 }
 
 export interface Sprint {
   id: string;
   sprintName: string;
+  project?: ProjectName;
   startDate: string;
   endDate: string;
   plannedTestCases: number;
@@ -62,6 +72,9 @@ export interface Sprint {
   testCasesExecuted?: number;
   defectsRaised?: number;
   defectsClosed?: number;
+  passed?: number;
+  failed?: number;
+  blocked?: number;
   remaining?: number;
   completion?: number;
   manualPct?: number;
@@ -78,11 +91,13 @@ export interface AppConfig {
   clientFocus: string;
   clientRisks: string;
   clientAchievements: string;
+  weeklyHighlights?: Record<ProjectName, { thisWeek: string; nextWeek: string; attention: string }>;
 }
 
 export interface DailyUpdate {
   id: string;
   date: string;
+  project?: ProjectName;
   userId: string;
   moduleId: string;
   sprintId: string;
@@ -104,6 +119,8 @@ export interface DailyUpdate {
   mediumDefects: number;
   lowDefects: number;
   defectsClosed: number;
+  flaky?: number;
+  reopenedDefects?: number;
   comments: string;
   createdAt: string;
   updatedAt: string;
@@ -130,8 +147,36 @@ export interface DashboardData {
     backlogAutomated: number;
     remaining: number;
     countingMode: string;
+    testCasesExecuted?: number;
+    passed?: number;
+    failed?: number;
+    blocked?: number;
+    passPct?: number;
+    openDefects?: number;
+    criticalHighDefects?: number;
   };
   period: Record<string, number>;
+  weekComparison?: Record<string, { current: number; previous: number; change: number; changePct: number | null }>;
+  sixWeekTrend?: Array<Record<string, string | number>>;
+  projectSummaries?: Record<string, any>;
+  execution?: Record<string, number>;
+  defects?: Record<string, number>;
+  risks?: Risk[];
+  feeShare?: Record<string, any> | null;
+  stories?: Array<{
+    id: string;
+    moduleId: string;
+    moduleName: string;
+    userStory: string;
+    totalTestCases: number;
+    manualWritten: number;
+    inSprintAutomated: number;
+    backlogAutomated: number;
+    uiAutomated: number;
+    apiAutomated: number;
+    totalAutomated: number;
+    remaining: number | null;
+  }>;
   modules: Module[];
   dailyTrend: Array<{
     date: string;
@@ -165,12 +210,26 @@ export interface DashboardData {
     apiAutomated: number;
     totalAutomated: number;
     manualWritten: number;
+    testCasesExecuted: number;
+    passed: number;
+    failed: number;
+    blocked: number;
     dailyAverage: number;
     daysLogged: number;
   }>;
   sprints: Sprint[];
   currentSprint?: Sprint;
   achievements: Array<{ date: string; comments: string; qaName?: string; moduleName?: string }>;
+}
+
+export interface Risk {
+  id: string;
+  project: ProjectName;
+  title: string;
+  impact: string;
+  owner: string;
+  status: "Open" | "In Progress" | "Resolved";
+  expectedResolution: string;
 }
 
 export interface Filters {
@@ -181,10 +240,13 @@ export interface Filters {
   moduleId: string;
   sprintId: string;
   automationType: string;
+  project?: string;
+  userStory?: string;
 }
 
 export const emptyDailyUpdate = (): Omit<DailyUpdate, "id" | "createdAt" | "updatedAt"> => ({
   date: "",
+  project: "Connect",
   userId: "",
   moduleId: "",
   sprintId: "",
@@ -206,5 +268,7 @@ export const emptyDailyUpdate = (): Omit<DailyUpdate, "id" | "createdAt" | "upda
   mediumDefects: 0,
   lowDefects: 0,
   defectsClosed: 0,
+  flaky: 0,
+  reopenedDefects: 0,
   comments: "",
 });

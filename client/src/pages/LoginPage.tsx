@@ -20,9 +20,9 @@ export function LoginPage() {
       }}
     >
       <Card sx={{ width: "min(460px, 100%)", p: 4 }}>
-        <Typography variant="h5">Connect QA Command Center</Typography>
+        <Typography variant="h5">QA Delivery Dashboard</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Daily automation reporting for the Connect program.
+          Connect & Force QA reporting — daily updates, automation, execution, and client status.
         </Typography>
         <Stack
           component="form"

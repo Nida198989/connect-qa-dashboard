@@ -2,7 +2,7 @@ import type { DailyUpdate, DashboardData, Filters, User } from "../types";
 import { bimonthly, buildDashboard, computeTotalAutomated, DEFAULT_CONFIG, moduleSnapshot, weeklyStatus } from "./analytics";
 import { createSeed, WORK_TYPES } from "./seed";
 
-const KEY = "connect-qa-offline-db-v4";
+const KEY = "connect-qa-offline-db-v5";
 const SESSION = "connect-qa-offline-user";
 
 function publicUser(user: any): User {
@@ -30,6 +30,7 @@ function currentUser() {
 function enrich(row: any, db: any) {
   return {
     ...row,
+    project: row.project || db.modules.find((m: any) => m.id === row.moduleId)?.project || "Connect",
     qaName: db.users.find((u: any) => u.id === row.userId)?.name,
     moduleName: db.modules.find((m: any) => m.id === row.moduleId)?.name,
     sprintName: db.sprints.find((s: any) => s.id === row.sprintId)?.sprintName,
@@ -38,7 +39,7 @@ function enrich(row: any, db: any) {
 }
 
 function uniqueKey(row: any) {
-  return [row.date, row.userId, row.moduleId, String(row.userStory || "").trim().toLowerCase()].join("|");
+  return [row.date, row.project || "Connect", row.userId, row.moduleId, String(row.userStory || "").trim().toLowerCase()].join("|");
 }
 
 export const offline = {
@@ -62,6 +63,8 @@ export const offline = {
       users: db.users.filter((u: any) => u.active).map(publicUser),
       modules: db.modules,
       sprints: db.sprints,
+      risks: db.risks || [],
+      projects: ["Connect", "Force"],
       config: { ...DEFAULT_CONFIG, ...db.config },
     };
   },
@@ -125,9 +128,26 @@ export const offline = {
   saveUpdate(payload: Partial<DailyUpdate>, filters: Filters) {
     const db = load();
     const user = currentUser();
-    const next = { ...payload, userId: user?.role === "qa" ? user.id : payload.userId };
-    if (!next.date || !next.userId || !next.moduleId || !next.sprintId || !next.workType || !String(next.userStory || "").trim()) {
-      throw { response: { data: { message: "Date, QA name, module, sprint, user story, and work type are mandatory." } } };
+    const next = { ...payload, project: payload.project === "Force" ? "Force" : "Connect", userId: user?.role === "qa" ? user.id : payload.userId };
+    if (!next.date || !next.project || !next.userId || !next.moduleId || !next.sprintId || !next.workType || !String(next.userStory || "").trim()) {
+      throw { response: { data: { message: "Date, project, QA name, module, sprint, user story, and work type are mandatory." } } };
+    }
+    if (Number(next.passed || 0) + Number(next.failed || 0) + Number(next.blocked || 0) > Number(next.testCasesExecuted || 0)) {
+      throw { response: { data: { message: "Passed + Failed + Blocked cannot exceed test cases executed today." } } };
+    }
+    if (
+      Number(next.criticalDefects || 0) + Number(next.highDefects || 0) + Number(next.mediumDefects || 0) + Number(next.lowDefects || 0) >
+      Number(next.defectsRaised || 0)
+    ) {
+      throw { response: { data: { message: "Severity totals cannot exceed defects raised." } } };
+    }
+    const numericKeys = [
+      "inSprintAutomated", "backlogAutomated", "uiAutomated", "apiAutomated", "manualWritten", "testCasesExecuted",
+      "passed", "failed", "blocked", "apisRecorded", "defectsRaised", "criticalDefects", "highDefects", "mediumDefects",
+      "lowDefects", "defectsClosed", "flaky", "reopenedDefects",
+    ];
+    if (numericKeys.some((key) => Number((next as any)[key] || 0) < 0)) {
+      throw { response: { data: { message: "Negative values are not allowed." } } };
     }
     const existing = db.dailyUpdates.find((row: any) => uniqueKey(row) === uniqueKey(next));
     const others = db.dailyUpdates.filter((row: any) => row.moduleId === next.moduleId && row.id !== existing?.id);
@@ -138,8 +158,13 @@ export const offline = {
     if (Number(mod.totalTestCases) > 0 && !db.config.allowAutomationExceedScope && nextTotal > Number(mod.totalTestCases)) {
       throw { response: { data: { message: `Automated test cases cannot exceed Total TC (${mod.totalTestCases}) for ${mod.name}.` } } };
     }
+    const nextApi = snapshot.current.apiAutomated + Number(next.apiAutomated || 0);
+    const nextRecorded = snapshot.current.apiRecorded + Number(next.apisRecorded || 0);
+    if (nextRecorded > 0 && !db.config.allowApiExceedRecorded && nextApi > nextRecorded) {
+      throw { response: { data: { message: "API automated cannot exceed APIs recorded." } } };
+    }
     const now = new Date().toISOString();
-    let saved;
+    let saved: any;
     if (existing) {
       saved = { ...existing, ...next, updatedAt: now };
       db.dailyUpdates = db.dailyUpdates.map((row: any) => (row.id === existing.id ? saved : row));
@@ -178,12 +203,14 @@ export const offline = {
     if (user?.role === "qa") return this.saveUser({ name: trimmed }, user.id);
     return this.saveUser({ name: trimmed, role: "qa" });
   },
-  resolveModule(name: string) {
+  resolveModule(name: string, project?: string) {
     const db = load();
-    const existing = db.modules.find((m: any) => m.name.toLowerCase() === name.trim().toLowerCase());
+    const proj = project === "Force" ? "Force" : "Connect";
+    const existing = db.modules.find((m: any) => m.name.toLowerCase() === name.trim().toLowerCase() && (m.project || "Connect") === proj);
     if (existing) return existing;
     return this.saveModule({
       name: name.trim(),
+      project: proj,
       totalTestCases: 0,
       manualWritten: 0,
       uiAutomated: 0,
@@ -191,13 +218,15 @@ export const offline = {
       apiAutomated: 0,
     });
   },
-  resolveSprint(sprintName: string) {
+  resolveSprint(sprintName: string, project?: string) {
     const db = load();
-    const existing = db.sprints.find((s: any) => s.sprintName.toLowerCase() === sprintName.trim().toLowerCase());
+    const proj = project === "Force" ? "Force" : "Connect";
+    const existing = db.sprints.find((s: any) => s.sprintName.toLowerCase() === sprintName.trim().toLowerCase() && (s.project || "Connect") === proj);
     if (existing) return existing;
     const today = new Date().toISOString().slice(0, 10);
     const created = this.saveSprint({
       sprintName: sprintName.trim(),
+      project: proj,
       startDate: today,
       endDate: today,
       plannedTestCases: 0,
@@ -261,9 +290,38 @@ export const offline = {
     const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     const link = document.createElement("a");
     link.href = url;
-    link.download = "connect-qa-report.csv";
+    link.download = `${filters.project || "qa"}-weekly-report.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  },
+  listRisks() {
+    return load().risks || [];
+  },
+  saveRisk(payload: Record<string, unknown>, id?: string) {
+    const db = load();
+    if (!db.risks) db.risks = [];
+    if (!id) {
+      const created = {
+        id: `risk-${Date.now()}`,
+        project: payload.project === "Force" ? "Force" : "Connect",
+        title: String(payload.title || "").trim(),
+        impact: String(payload.impact || "").trim(),
+        owner: String(payload.owner || "").trim(),
+        status: payload.status || "Open",
+        expectedResolution: String(payload.expectedResolution || ""),
+      };
+      db.risks.push(created);
+      save(db);
+      return created;
+    }
+    db.risks = db.risks.map((risk: any) => (risk.id === id ? { ...risk, ...payload } : risk));
+    save(db);
+    return db.risks.find((r: any) => r.id === id);
+  },
+  deleteRisk(id: string) {
+    const db = load();
+    db.risks = (db.risks || []).filter((r: any) => r.id !== id);
+    save(db);
   },
 };
 

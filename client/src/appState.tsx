@@ -28,6 +28,8 @@ const defaultFilters = (): Filters => ({
   moduleId: "",
   sprintId: "",
   automationType: "",
+  project: "",
+  userStory: "",
 });
 
 export function AppStateProvider({ children }: { children: React.ReactNode }) {

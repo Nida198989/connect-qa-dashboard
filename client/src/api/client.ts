@@ -18,6 +18,8 @@ export function filterParams(filters: Filters) {
   if (filters.moduleId) params.moduleId = filters.moduleId;
   if (filters.sprintId) params.sprintId = filters.sprintId;
   if (filters.automationType) params.automationType = filters.automationType;
+  if (filters.project) params.project = filters.project;
+  if (filters.userStory) params.userStory = filters.userStory;
   return params;
 }
 
@@ -98,15 +100,15 @@ export async function resolveQaName(name: string) {
   return data as User;
 }
 
-export async function resolveModule(name: string) {
-  if (isOfflineMode()) return offline.resolveModule(name);
-  const { data } = await api.post("/modules/resolve", { name });
+export async function resolveModule(name: string, project?: string) {
+  if (isOfflineMode()) return offline.resolveModule(name, project);
+  const { data } = await api.post("/modules/resolve", { name, project });
   return data;
 }
 
-export async function resolveSprint(sprintName: string) {
-  if (isOfflineMode()) return offline.resolveSprint(sprintName);
-  const { data } = await api.post("/sprints/resolve", { sprintName });
+export async function resolveSprint(sprintName: string, project?: string) {
+  if (isOfflineMode()) return offline.resolveSprint(sprintName, project);
+  const { data } = await api.post("/sprints/resolve", { sprintName, project });
   return data;
 }
 
@@ -132,6 +134,40 @@ export async function saveConfig(payload: Record<string, unknown>) {
   if (isOfflineMode()) return offline.saveConfig(payload);
   const { data } = await api.put("/config", payload);
   return data;
+}
+
+export async function listRisks() {
+  if (isOfflineMode()) return offline.listRisks();
+  const { data } = await api.get("/risks");
+  return data;
+}
+
+export async function saveRisk(payload: Record<string, unknown>, id?: string) {
+  if (isOfflineMode()) return offline.saveRisk(payload, id);
+  const { data } = id ? await api.put(`/risks/${id}`, payload) : await api.post("/risks", payload);
+  return data;
+}
+
+export async function deleteRisk(id: string) {
+  if (isOfflineMode()) return offline.deleteRisk(id);
+  await api.delete(`/risks/${id}`);
+}
+
+export async function downloadCsv(filters: Filters) {
+  if (isOfflineMode()) {
+    offline.downloadExcel(filters);
+    return;
+  }
+  const { data } = await api.get("/export/excel", {
+    params: filterParams(filters),
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(data);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `${filters.project || "qa"}-weekly-report.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 export async function downloadExcel(filters: Filters) {

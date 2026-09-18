@@ -10,11 +10,17 @@ dayjs.extend(isSameOrBefore);
 
 const DEFAULT_CONFIG = {
   countingMode: "unique_test_cases",
+  allowAutomationExceedScope: false,
+  allowApiExceedRecorded: false,
   thresholds: { green: 80, amber: 50, orange: 20 },
   currentSprintId: "",
   clientFocus: "",
   clientRisks: "",
   clientAchievements: "",
+  weeklyHighlights: {
+    Connect: { thisWeek: "", nextWeek: "", attention: "" },
+    Force: { thisWeek: "", nextWeek: "", attention: "" },
+  },
 };
 
 export function num(value) {
@@ -32,6 +38,15 @@ function coverageStatus(coverage, thresholds = DEFAULT_CONFIG.thresholds) {
   if (coverage >= thresholds.amber) return { label: "Watch", tone: "amber" };
   if (coverage >= thresholds.orange) return { label: "At Risk", tone: "orange" };
   return { label: "Critical", tone: "red" };
+}
+
+function projectOf(row) {
+  return row?.project === "Force" ? "Force" : "Connect";
+}
+
+function matchesProject(row, project) {
+  if (!project || project === "All") return true;
+  return projectOf(row) === project;
 }
 
 function resolveRange(filters, sprints, config) {
@@ -88,9 +103,11 @@ function inRange(date, range) {
 function filterUpdates(updates, filters = {}, range) {
   return updates.filter((row) => {
     if (range && !inRange(row.date, range)) return false;
+    if (!matchesProject(row, filters.project)) return false;
     if (filters.userId && row.userId !== filters.userId) return false;
     if (filters.moduleId && row.moduleId !== filters.moduleId) return false;
     if (filters.sprintId && row.sprintId !== filters.sprintId) return false;
+    if (filters.userStory && String(row.userStory || "").trim().toLowerCase() !== String(filters.userStory).trim().toLowerCase()) return false;
     if (filters.automationType === "ui" && num(row.uiAutomated) <= 0) return false;
     if (filters.automationType === "api" && num(row.apiAutomated) <= 0) return false;
     if (filters.automationType === "in_sprint" && num(row.inSprintAutomated) <= 0) return false;
@@ -137,6 +154,12 @@ export function moduleSnapshot(mod, allUpdates, config) {
       totalAutomated,
       remaining,
       coverage,
+      testCasesExecuted: sumField(rows, "testCasesExecuted"),
+      passed: sumField(rows, "passed"),
+      failed: sumField(rows, "failed"),
+      blocked: sumField(rows, "blocked"),
+      defectsRaised: sumField(rows, "defectsRaised"),
+      defectsClosed: sumField(rows, "defectsClosed"),
       status: coverageStatus(coverage, config.thresholds),
     },
   };
@@ -185,6 +208,8 @@ function periodTotals(updates) {
     highDefects: sumField(updates, "highDefects"),
     mediumDefects: sumField(updates, "mediumDefects"),
     lowDefects: sumField(updates, "lowDefects"),
+    flaky: sumField(updates, "flaky"),
+    reopenedDefects: sumField(updates, "reopenedDefects"),
   };
 }
 
@@ -217,13 +242,32 @@ function chartByDate(updates) {
   const grouped = {};
   updates.forEach((row) => {
     if (!grouped[row.date]) {
-      grouped[row.date] = { date: row.date, inSprintAutomated: 0, backlogAutomated: 0, uiAutomated: 0, apiAutomated: 0, totalAutomated: 0 };
+      grouped[row.date] = {
+        date: row.date,
+        inSprintAutomated: 0,
+        backlogAutomated: 0,
+        uiAutomated: 0,
+        apiAutomated: 0,
+        totalAutomated: 0,
+        manualWritten: 0,
+        testCasesExecuted: 0,
+        passed: 0,
+        failed: 0,
+        blocked: 0,
+        defectsRaised: 0,
+      };
     }
     grouped[row.date].inSprintAutomated += num(row.inSprintAutomated);
     grouped[row.date].backlogAutomated += num(row.backlogAutomated);
     grouped[row.date].uiAutomated += num(row.uiAutomated);
     grouped[row.date].apiAutomated += num(row.apiAutomated);
     grouped[row.date].totalAutomated += dailyTotal(row);
+    grouped[row.date].manualWritten += num(row.manualWritten);
+    grouped[row.date].testCasesExecuted += num(row.testCasesExecuted);
+    grouped[row.date].passed += num(row.passed);
+    grouped[row.date].failed += num(row.failed);
+    grouped[row.date].blocked += num(row.blocked);
+    grouped[row.date].defectsRaised += num(row.defectsRaised);
   });
   return Object.values(grouped).sort((a, b) => a.date.localeCompare(b.date));
 }
@@ -257,6 +301,10 @@ function teamProgress(updates, users) {
         manualWritten: sumField(rows, "manualWritten"),
         dailyAverage: dates.size ? Math.round((totalAutomated / dates.size) * 10) / 10 : 0,
         daysLogged: dates.size,
+        testCasesExecuted: sumField(rows, "testCasesExecuted"),
+        passed: sumField(rows, "passed"),
+        failed: sumField(rows, "failed"),
+        blocked: sumField(rows, "blocked"),
       };
     });
 }
@@ -326,13 +374,94 @@ export function bimonthly(modules, updates, startDate, endDate, config) {
 
 export function buildDashboard(db, filters = {}) {
   const config = { ...DEFAULT_CONFIG, ...db.config };
-  const range = resolveRange(filters, db.sprints, config);
+  const project = filters.project === "Force" || filters.project === "Connect" ? filters.project : "";
+  const projectModules = project ? db.modules.filter((m) => matchesProject(m, project)) : db.modules;
+  const projectSprints = project ? db.sprints.filter((s) => matchesProject(s, project)) : db.sprints;
+  const range = resolveRange(filters, projectSprints, config);
   const scoped = filterUpdates(db.dailyUpdates, filters, null);
   const ranged = filterUpdates(db.dailyUpdates, filters, range);
   const comparison = inSprintVsBacklog(scoped);
-  const sprintRows = scoped.filter((u) => u.sprintId === config.currentSprintId);
+  const currentSprint = projectSprints.find((s) => s.id === config.currentSprintId) || projectSprints[projectSprints.length - 1];
+  const sprintRows = scoped.filter((u) => u.sprintId === currentSprint?.id);
   comparison.inSprint.sprint = sumField(sprintRows, "inSprintAutomated");
   comparison.backlog.sprint = sumField(sprintRows, "backlogAutomated");
+  const kpis = overallKpis(projectModules, scoped, config);
+  const period = periodTotals(ranged);
+  const thisWeekStart = dayjs().startOf("isoWeek").format("YYYY-MM-DD");
+  const previousUpdates = scoped.filter((u) => dayjs(u.date).isBefore(dayjs(thisWeekStart), "day"));
+  const previousKpis = overallKpis(projectModules, previousUpdates, config);
+  const previousPeriod = periodTotals(previousUpdates);
+  const defectTotals = periodTotals(scoped);
+  const executedAll = defectTotals.testCasesExecuted;
+  const passedAll = defectTotals.passed;
+  const compareMetric = (current, previous) => ({
+    current,
+    previous,
+    change: current - previous,
+    changePct: previous ? Math.round(((current - previous) / previous) * 1000) / 10 : null,
+  });
+  const weeks = [];
+  for (let i = 5; i >= 0; i -= 1) {
+    const start = dayjs().subtract(i, "week").startOf("isoWeek");
+    const weekRange = { start: start.format("YYYY-MM-DD"), end: start.endOf("isoWeek").format("YYYY-MM-DD") };
+    weeks.push({ week: `Week ${start.isoWeek()}`, start: weekRange.start, end: weekRange.end, ...periodTotals(scoped.filter((u) => inRange(u.date, weekRange))) });
+  }
+  function projectSummary(name) {
+    const mods = db.modules.filter((m) => matchesProject(m, name));
+    const rows = db.dailyUpdates.filter((u) => matchesProject(u, name));
+    const summaryKpis = overallKpis(mods, rows, config);
+    const totals = periodTotals(rows);
+    return {
+      project: name,
+      ...summaryKpis,
+      testCasesExecuted: totals.testCasesExecuted,
+      passed: totals.passed,
+      failed: totals.failed,
+      blocked: totals.blocked,
+      passPct: pct(totals.passed, totals.testCasesExecuted),
+      openDefects: Math.max(0, totals.defectsRaised - totals.defectsClosed),
+      closedDefects: totals.defectsClosed,
+    };
+  }
+  const feeModules = projectModules.filter((m) => m.isFeeShare || /feeshare/i.test(m.name || ""));
+  const feeIds = new Set(feeModules.map((m) => m.id));
+  const feeRows = scoped.filter((u) => feeIds.has(u.moduleId));
+  const stories = {};
+  scoped.forEach((row) => {
+    const key = `${row.moduleId}|${String(row.userStory || "").trim().toLowerCase()}`;
+    if (!stories[key]) {
+      const mod = projectModules.find((m) => m.id === row.moduleId);
+      stories[key] = {
+        id: key,
+        moduleId: row.moduleId,
+        moduleName: mod?.name || "Unknown",
+        userStory: String(row.userStory || "").trim() || "N/A",
+        totalTestCases: num(mod?.totalTestCases),
+        manualWritten: 0,
+        inSprintAutomated: 0,
+        backlogAutomated: 0,
+        uiAutomated: 0,
+        apiAutomated: 0,
+      };
+    }
+    stories[key].manualWritten += num(row.manualWritten);
+    stories[key].inSprintAutomated += num(row.inSprintAutomated);
+    stories[key].backlogAutomated += num(row.backlogAutomated);
+    stories[key].uiAutomated += num(row.uiAutomated);
+    stories[key].apiAutomated += num(row.apiAutomated);
+  });
+  const feeShare = project === "Force" && feeModules.length
+    ? {
+        ...overallKpis(feeModules, feeRows, config),
+        ...periodTotals(feeRows),
+        weekly: weeks.map((week) => ({
+          week: week.week,
+          start: week.start,
+          end: week.end,
+          ...periodTotals(feeRows.filter((u) => inRange(u.date, { start: week.start, end: week.end }))),
+        })),
+      }
+    : null;
   return {
     generatedAt: new Date().toISOString(),
     range,
@@ -344,16 +473,68 @@ export function buildDashboard(db, filters = {}) {
       clientFocus: config.clientFocus,
       clientRisks: config.clientRisks,
       clientAchievements: config.clientAchievements,
+      weeklyHighlights: config.weeklyHighlights,
     },
-    kpis: overallKpis(db.modules, scoped, config),
-    period: periodTotals(ranged),
-    modules: db.modules.map((m) => moduleSnapshot(m, scoped, config)),
+    kpis: {
+      ...kpis,
+      testCasesExecuted: executedAll,
+      passed: passedAll,
+      failed: defectTotals.failed,
+      blocked: defectTotals.blocked,
+      passPct: pct(passedAll, executedAll),
+      openDefects: Math.max(0, defectTotals.defectsRaised - defectTotals.defectsClosed),
+      criticalHighDefects: defectTotals.criticalDefects + defectTotals.highDefects,
+    },
+    period,
+    weekComparison: {
+      totalAutomated: compareMetric(kpis.totalAutomated, previousKpis.totalAutomated),
+      manualWritten: compareMetric(kpis.manualWritten, previousKpis.manualWritten),
+      inSprintAutomated: compareMetric(kpis.inSprintAutomated, previousKpis.inSprintAutomated),
+      backlogAutomated: compareMetric(kpis.backlogAutomated, previousKpis.backlogAutomated),
+      apiAutomated: compareMetric(kpis.apiAutomated, previousKpis.apiAutomated),
+      apiRecorded: compareMetric(kpis.apiRecorded, previousKpis.apiRecorded),
+      testCasesExecuted: compareMetric(defectTotals.testCasesExecuted, previousPeriod.testCasesExecuted),
+      defectsRaised: compareMetric(defectTotals.defectsRaised, previousPeriod.defectsRaised),
+      defectsClosed: compareMetric(defectTotals.defectsClosed, previousPeriod.defectsClosed),
+      automationCoverage: compareMetric(kpis.automationCoverage, previousKpis.automationCoverage),
+    },
+    sixWeekTrend: weeks,
+    projectSummaries: { Connect: projectSummary("Connect"), Force: projectSummary("Force") },
+    execution: {
+      executed: executedAll,
+      passed: passedAll,
+      failed: defectTotals.failed,
+      blocked: defectTotals.blocked,
+      flaky: defectTotals.flaky,
+      notExecuted: Math.max(0, kpis.totalTestCases - executedAll),
+      passPct: pct(passedAll, executedAll),
+    },
+    defects: {
+      total: defectTotals.defectsRaised,
+      open: Math.max(0, defectTotals.defectsRaised - defectTotals.defectsClosed),
+      closed: defectTotals.defectsClosed,
+      newThisWeek: period.defectsRaised,
+      closedThisWeek: period.defectsClosed,
+      reopened: defectTotals.reopenedDefects,
+      critical: defectTotals.criticalDefects,
+      high: defectTotals.highDefects,
+      medium: defectTotals.mediumDefects,
+      low: defectTotals.lowDefects,
+    },
+    risks: (db.risks || []).filter((r) => !project || matchesProject(r, project)),
+    feeShare,
+    stories: Object.values(stories).map((s) => ({
+      ...s,
+      totalAutomated: s.inSprintAutomated + s.backlogAutomated,
+      remaining: s.totalTestCases ? Math.max(0, s.totalTestCases - (s.inSprintAutomated + s.backlogAutomated)) : null,
+    })),
+    modules: projectModules.map((m) => moduleSnapshot(m, scoped, config)),
     dailyTrend: dailyTrend(ranged, db.users),
     chartByDate: chartByDate(ranged),
     inSprintVsBacklog: comparison,
     team: teamProgress(ranged, db.users),
-    sprints: sprintProgress(db.sprints, scoped, config),
-    currentSprint: db.sprints.find((s) => s.id === config.currentSprintId),
+    sprints: sprintProgress(projectSprints, scoped, config),
+    currentSprint,
     achievements: scoped
       .filter((u) => u.comments)
       .sort((a, b) => b.date.localeCompare(a.date))

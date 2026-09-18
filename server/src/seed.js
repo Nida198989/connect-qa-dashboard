@@ -18,6 +18,7 @@ function seed() {
     sprints: [],
     dailyUpdates: [],
     auditLogs: [],
+    risks: [],
     config: { ...DEFAULT_CONFIG },
   };
   resetDb(data);

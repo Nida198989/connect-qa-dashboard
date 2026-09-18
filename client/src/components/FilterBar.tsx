@@ -72,8 +72,10 @@ export function FilterBar({
 }) {
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
   const qaValue = users.some((u) => u.id === filters.userId) ? filters.userId : "";
-  const moduleValue = modules.some((m) => m.id === filters.moduleId) ? filters.moduleId : "";
-  const sprintValue = sprints.some((s) => s.id === filters.sprintId) ? filters.sprintId : "";
+  const moduleOptions = modules.filter((m) => !filters.project || (m.project || "Connect") === filters.project);
+  const sprintOptions = sprints.filter((s) => !filters.project || (s.project || "Connect") === filters.project);
+  const moduleValue = moduleOptions.some((m) => m.id === filters.moduleId) ? filters.moduleId : "";
+  const sprintValue = sprintOptions.some((s) => s.id === filters.sprintId) ? filters.sprintId : "";
   const qaUsers = users.filter((u) => u.role !== "admin");
 
   return (
@@ -85,13 +87,18 @@ export function FilterBar({
             xs: "1fr",
             sm: "repeat(2, minmax(0, 1fr))",
             md: "repeat(3, minmax(0, 1fr))",
-            lg: "repeat(5, minmax(0, 1fr))",
+            lg: "repeat(7, minmax(0, 1fr))",
           },
           gap: 1.5,
           alignItems: "center",
           width: "100%",
         }}
       >
+        <FilterSelect id="project" label="Project" value={filters.project || ""} onChange={(value) => set({ project: value, moduleId: "", sprintId: "" })}>
+          <MenuItem value="">All Projects</MenuItem>
+          <MenuItem value="Connect">Connect</MenuItem>
+          <MenuItem value="Force">Force</MenuItem>
+        </FilterSelect>
         <FilterSelect id="period" label="Period" value={filters.preset || "this_week"} onChange={(value) => set({ preset: value })}>
           {presets.map((p) => (
             <MenuItem key={p.id} value={p.id}>
@@ -118,29 +125,30 @@ export function FilterBar({
         )}
         <FilterSelect id="module" label="Module" value={moduleValue} onChange={(value) => set({ moduleId: value })}>
           <MenuItem value="">All Modules</MenuItem>
-          {modules.map((m) => (
+          {moduleOptions.map((m) => (
             <MenuItem key={m.id} value={m.id}>
               {m.name}
             </MenuItem>
           ))}
-          {modules.length === 0 && <MenuItem disabled value="__empty">No modules yet — add them on Daily Update</MenuItem>}
+          {moduleOptions.length === 0 && <MenuItem disabled value="__empty">No modules yet — add them on Daily Update</MenuItem>}
         </FilterSelect>
         <FilterSelect id="sprint" label="Sprint" value={sprintValue} onChange={(value) => set({ sprintId: value })}>
           <MenuItem value="">All Sprints</MenuItem>
-          {sprints.map((s) => (
+          {sprintOptions.map((s) => (
             <MenuItem key={s.id} value={s.id}>
               {s.sprintName}
             </MenuItem>
           ))}
-          {sprints.length === 0 && <MenuItem disabled value="__empty">No sprints yet — add them on Daily Update</MenuItem>}
+          {sprintOptions.length === 0 && <MenuItem disabled value="__empty">No sprints yet — add them on Daily Update</MenuItem>}
         </FilterSelect>
         <FilterSelect id="automation-type" label="Automation Type" value={filters.automationType || ""} onChange={(value) => set({ automationType: value })}>
           <MenuItem value="">All Types</MenuItem>
-          <MenuItem value="in_sprint">In-Sprint</MenuItem>
-          <MenuItem value="backlog">Backlog</MenuItem>
+          <MenuItem value="in_sprint">Sprint Automation</MenuItem>
+          <MenuItem value="backlog">Backlog Automation</MenuItem>
           <MenuItem value="ui">UI</MenuItem>
           <MenuItem value="api">API</MenuItem>
         </FilterSelect>
+        <TextField size="small" label="User Story" InputLabelProps={{ shrink: true }} value={filters.userStory || ""} onChange={(e) => set({ userStory: e.target.value })} />
       </Box>
       <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
         <Button variant="contained" onClick={onRefresh} sx={{ height: 40, whiteSpace: "nowrap", px: 2.5 }}>

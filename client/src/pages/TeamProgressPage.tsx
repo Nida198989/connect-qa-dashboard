@@ -11,21 +11,21 @@ export function TeamProgressPage() {
   if (clientView) return <Alert severity="info">Team productivity is hidden in Client View.</Alert>;
 
   const columns: GridColDef[] = [
-    { field: "name", headerName: "QA", flex: 1, minWidth: 160 },
-    { field: "inSprintAutomated", headerName: "In-Sprint", width: 120 },
-    { field: "backlogAutomated", headerName: "Backlog", width: 120 },
-    { field: "uiAutomated", headerName: "UI", width: 90 },
-    { field: "apiAutomated", headerName: "API", width: 90 },
+    { field: "name", headerName: "QA Member", flex: 1, minWidth: 160 },
+    { field: "manualWritten", headerName: "Manual TC", width: 120 },
+    { field: "inSprintAutomated", headerName: "Sprint Automation", width: 160 },
+    { field: "backlogAutomated", headerName: "Backlog Automation", width: 170 },
+    { field: "apiAutomated", headerName: "API Automation", width: 150 },
+    { field: "testCasesExecuted", headerName: "Execution", width: 120 },
     { field: "totalAutomated", headerName: "Total Automated", width: 150 },
-    { field: "manualWritten", headerName: "Manual Written", width: 150 },
     { field: "dailyAverage", headerName: "Daily Average", width: 140 },
     { field: "daysLogged", headerName: "Days Logged", width: 130 },
   ];
 
   return (
     <Stack spacing={2.5}>
-      <Typography variant="h4">Team Progress</Typography>
-      <Typography color="text.secondary">Workload visibility only — this view is not a ranking or performance score.</Typography>
+      <Typography variant="h4">QA Team Productivity — Internal</Typography>
+      <Typography color="text.secondary">Internal QA Lead view only. This is hidden from Client View and is not shown as the primary dashboard.</Typography>
       <FilterBar filters={filters} onChange={setFilters} onRefresh={refresh} users={users} modules={modules} sprints={sprints} />
       {loading && <LinearProgress />}
       <Grid container spacing={2}>

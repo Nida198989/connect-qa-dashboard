@@ -1,5 +1,5 @@
-import { Box, Card, Grid, LinearProgress, Stack, Typography } from "@mui/material";
-import { DataGrid, type GridColDef } from "@mui/x-data-grid";
+import { Box, Button, Card, LinearProgress, Stack, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import {
   Bar,
   BarChart,
@@ -17,158 +17,138 @@ import {
 } from "recharts";
 import dayjs from "dayjs";
 import { FilterBar } from "../components/FilterBar";
+import { HighlightsPanel, ProjectHealthCards } from "../components/DashboardWidgets";
 import { KpiCard } from "../components/KpiCard";
-import { StatusBadge } from "../components/StatusBadge";
 import { useApp } from "../appState";
+import { pctOrNA } from "../projects";
 
 export function DashboardPage() {
   const { dashboard, filters, setFilters, refresh, users, modules, sprints, loading, clientView } = useApp();
+  const navigate = useNavigate();
   if (!dashboard) return <LinearProgress />;
 
-  const compare = [
-    { name: "Today", inSprint: dashboard.inSprintVsBacklog.inSprint.today, backlog: dashboard.inSprintVsBacklog.backlog.today },
-    { name: "This Week", inSprint: dashboard.inSprintVsBacklog.inSprint.week, backlog: dashboard.inSprintVsBacklog.backlog.week },
-    { name: "Current Sprint", inSprint: dashboard.inSprintVsBacklog.inSprint.sprint, backlog: dashboard.inSprintVsBacklog.backlog.sprint },
-    { name: "Cumulative", inSprint: dashboard.inSprintVsBacklog.inSprint.cumulative, backlog: dashboard.inSprintVsBacklog.backlog.cumulative },
-  ];
-
-  const donut = [
-    { name: "UI Automated", value: dashboard.kpis.uiAutomated, color: "#2563eb" },
-    { name: "Remaining", value: dashboard.kpis.remaining, color: "#cbd5e1" },
-  ];
-
-  const columns: GridColDef[] = [
-    { field: "date", headerName: "Date", width: 120, valueGetter: (_, row) => dayjs(row.date).format("DD-MMM") },
-    { field: "qaName", headerName: "QA", flex: 1, minWidth: 140 },
-    { field: "inSprintAutomated", headerName: "In-Sprint", width: 110 },
-    { field: "backlogAutomated", headerName: "Backlog", width: 110 },
-    { field: "uiAutomated", headerName: "UI", width: 80 },
-    { field: "apiAutomated", headerName: "API", width: 80 },
-    { field: "totalAutomated", headerName: "Total", width: 90 },
-  ];
+  const connect = dashboard.projectSummaries?.Connect;
+  const force = dashboard.projectSummaries?.Force;
+  const combined = Boolean(!filters.project);
 
   return (
     <Stack spacing={2.5}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography variant="h4">Executive Dashboard</Typography>
-          <Typography color="text.secondary">
-            {dashboard.range.label}: {dayjs(dashboard.range.start).format("DD MMM YYYY")} → {dayjs(dashboard.range.end).format("DD MMM YYYY")}
-          </Typography>
-        </Box>
-      </Stack>
+      <Box>
+        <Typography variant="h4">QA Delivery Dashboard</Typography>
+        <Typography color="text.secondary">
+          {combined ? "Combined landing plus selected-period KPIs. Open Connect or Force for isolated project metrics." : `${filters.project} only — Connect and Force are never mixed.`}
+          {" "}
+          {dashboard.range.label}: {dayjs(dashboard.range.start).format("DD MMM YYYY")} → {dayjs(dashboard.range.end).format("DD MMM YYYY")}
+        </Typography>
+      </Box>
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+        <Card sx={{ p: 3, background: "linear-gradient(135deg,#eff6ff,#ffffff)" }}>
+          <Typography variant="h5">CONNECT</Typography>
+          <Stack spacing={0.6} sx={{ mt: 1.5 }}>
+            <Typography>Automation: {pctOrNA(connect?.totalAutomated, connect?.totalTestCases)}</Typography>
+            <Typography>Sprint Automation: {connect?.inSprintAutomated ?? 0}</Typography>
+            <Typography>Backlog Automation: {connect?.backlogAutomated ?? 0}</Typography>
+            <Typography>Execution Pass: {pctOrNA(connect?.passed, connect?.testCasesExecuted)}</Typography>
+            <Typography>Open Defects: {connect?.openDefects ?? 0}</Typography>
+          </Stack>
+          <Button sx={{ mt: 2 }} variant="contained" onClick={() => { setFilters({ ...filters, project: "Connect", moduleId: "", sprintId: "" }); navigate("/connect"); }}>
+            View Connect →
+          </Button>
+        </Card>
+        <Card sx={{ p: 3, background: "linear-gradient(135deg,#ecfdf5,#ffffff)" }}>
+          <Typography variant="h5">FORCE</Typography>
+          <Stack spacing={0.6} sx={{ mt: 1.5 }}>
+            <Typography>Automation: {pctOrNA(force?.totalAutomated, force?.totalTestCases)}</Typography>
+            <Typography>API Automation: {pctOrNA(force?.apiAutomated, force?.apiRecorded)}</Typography>
+            <Typography>Sprint Automation: {force?.inSprintAutomated ?? 0}</Typography>
+            <Typography>Backlog Automation: {force?.backlogAutomated ?? 0}</Typography>
+            <Typography>Execution Pass: {pctOrNA(force?.passed, force?.testCasesExecuted)}</Typography>
+            <Typography>Open Defects: {force?.openDefects ?? 0}</Typography>
+          </Stack>
+          <Button sx={{ mt: 2 }} variant="contained" color="success" onClick={() => { setFilters({ ...filters, project: "Force", moduleId: "", sprintId: "" }); navigate("/force"); }}>
+            View Force →
+          </Button>
+        </Card>
+      </Box>
+
       <FilterBar filters={filters} onChange={setFilters} onRefresh={refresh} users={users} modules={modules} sprints={sprints} hideQa={clientView} />
       {loading && <LinearProgress />}
 
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" },
-          gap: 2,
-        }}
-      >
-        <KpiCard color="slate" label="TOTAL TC" value={dashboard.kpis.totalTestCases} />
-        <KpiCard color="purple" label="MANUAL TEST CASES" value={dashboard.kpis.manualWritten} />
-        <KpiCard color="blue" label="UI AUTOMATED" value={dashboard.kpis.uiAutomated} />
-        <KpiCard color="teal" label="API AUTOMATED" value={dashboard.kpis.apiAutomated} />
-        <KpiCard color="green" label="TOTAL AUTOMATED" value={dashboard.kpis.totalAutomated} hint={dashboard.kpis.countingMode === "unique_test_cases" ? "Unique TCs, no UI+API double count" : "Configured counting model"} />
-        <KpiCard color="orange" label="AUTOMATION COVERAGE" value={`${dashboard.kpis.automationCoverage}%`} />
-        <KpiCard color="teal" label="APIS RECORDED" value={dashboard.kpis.apiRecorded} />
-        <KpiCard color="purple" label="API COVERAGE" value={`${dashboard.kpis.apiCoverage}%`} />
-        <KpiCard color="blue" label="IN-SPRINT AUTOMATED" value={dashboard.kpis.inSprintAutomated} />
-        <KpiCard color="orange" label="BACKLOG AUTOMATED" value={dashboard.kpis.backlogAutomated} />
+      <Typography variant="h5">{combined ? "Executive Dashboard — Combined" : `Executive Dashboard — ${filters.project}`}</Typography>
+      <ProjectHealthCards dash={dashboard} combined={combined} />
+      <HighlightsPanel dash={dashboard} project={filters.project} />
+
+      <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" }, gap: 2 }}>
+        <Card sx={{ p: 2, height: 360 }}>
+          <Typography variant="h6" sx={{ mb: 1 }}>Automation Trend</Typography>
+          <ResponsiveContainer width="100%" height={290}>
+            <LineChart data={dashboard.chartByDate}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tickFormatter={(v) => dayjs(v).format("DD MMM")} />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="totalAutomated" name="Daily Total" stroke="#2563eb" strokeWidth={3} />
+              <Line type="monotone" dataKey="inSprintAutomated" name="Sprint" stroke="#7c3aed" />
+              <Line type="monotone" dataKey="backlogAutomated" name="Backlog" stroke="#ea580c" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card sx={{ p: 2, height: 360 }}>
+          <Typography variant="h6">Sprint vs Backlog</Typography>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={[
+                  { name: "Sprint Automation", value: dashboard.kpis.inSprintAutomated, color: "#2563eb" },
+                  { name: "Backlog Automation", value: dashboard.kpis.backlogAutomated, color: "#ea580c" },
+                ]}
+                dataKey="value"
+                nameKey="name"
+                innerRadius={60}
+                outerRadius={90}
+              >
+                <Cell fill="#2563eb" />
+                <Cell fill="#ea580c" />
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
       </Box>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
-          <Card sx={{ p: 2, height: 360 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>Test Cases Automated Per Day</Typography>
-            <ResponsiveContainer width="100%" height={290}>
-              <LineChart data={dashboard.chartByDate}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" tickFormatter={(v) => dayjs(v).format("DD MMM")} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="totalAutomated" name="Daily Total" stroke="#2563eb" strokeWidth={3} />
-                <Line type="monotone" dataKey="inSprintAutomated" name="In-Sprint" stroke="#7c3aed" />
-                <Line type="monotone" dataKey="backlogAutomated" name="Backlog" stroke="#ea580c" />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2, height: 360 }}>
-            <Typography variant="h6">Coverage Mix</Typography>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={donut} dataKey="value" nameKey="name" innerRadius={60} outerRadius={90}>
-                  {donut.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={7}>
-          <Card sx={{ p: 2, height: 380 }}>
-            <Typography variant="h6" sx={{ mb: 1 }}>In-Sprint vs Backlog Automation</Typography>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={compare}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="inSprint" name="In-Sprint" stackId="a" fill="#2563eb" />
-                <Bar dataKey="backlog" name="Backlog" stackId="a" fill="#ea580c" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={5}>
-          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
-            <KpiCard color="blue" label="IN-SPRINT TODAY" value={dashboard.inSprintVsBacklog.inSprint.today} />
-            <KpiCard color="orange" label="BACKLOG TODAY" value={dashboard.inSprintVsBacklog.backlog.today} />
-            <KpiCard color="purple" label="IN-SPRINT WEEK" value={dashboard.inSprintVsBacklog.inSprint.week} />
-            <KpiCard color="teal" label="BACKLOG WEEK" value={dashboard.inSprintVsBacklog.backlog.week} />
-            <KpiCard color="green" label="IN-SPRINT SPRINT" value={dashboard.inSprintVsBacklog.inSprint.sprint} />
-            <KpiCard color="slate" label="BACKLOG SPRINT" value={dashboard.inSprintVsBacklog.backlog.sprint} />
-          </Box>
-        </Grid>
-      </Grid>
+      <Card sx={{ p: 2, height: 360 }}>
+        <Typography variant="h6" sx={{ mb: 1 }}>In-Sprint vs Backlog Automation</Typography>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart
+            data={[
+              { name: "Today", inSprint: dashboard.inSprintVsBacklog.inSprint.today, backlog: dashboard.inSprintVsBacklog.backlog.today },
+              { name: "This Week", inSprint: dashboard.inSprintVsBacklog.inSprint.week, backlog: dashboard.inSprintVsBacklog.backlog.week },
+              { name: "Current Sprint", inSprint: dashboard.inSprintVsBacklog.inSprint.sprint, backlog: dashboard.inSprintVsBacklog.backlog.sprint },
+              { name: "Cumulative", inSprint: dashboard.inSprintVsBacklog.inSprint.cumulative, backlog: dashboard.inSprintVsBacklog.backlog.cumulative },
+            ]}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Bar dataKey="inSprint" name="Sprint Automation" stackId="a" fill="#2563eb" />
+            <Bar dataKey="backlog" name="Backlog Automation" stackId="a" fill="#ea580c" />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
 
-      <Card sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>Daily Productivity</Typography>
-        <Box sx={{ height: 360 }}>
-          <DataGrid
-            rows={dashboard.dailyTrend.map((r, i) => ({ id: `${r.date}-${r.userId}-${i}`, ...r }))}
-            columns={clientView ? columns.filter((c) => c.field !== "qaName") : columns}
-            disableRowSelectionOnClick
-            pageSizeOptions={[10, 25]}
-            initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-          />
+      {!clientView && (
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(4, minmax(0, 1fr))" }, gap: 2 }}>
+          <KpiCard color="blue" label="SPRINT TODAY" value={dashboard.inSprintVsBacklog.inSprint.today} />
+          <KpiCard color="orange" label="BACKLOG TODAY" value={dashboard.inSprintVsBacklog.backlog.today} />
+          <KpiCard color="purple" label="SPRINT WEEK" value={dashboard.inSprintVsBacklog.inSprint.week} />
+          <KpiCard color="teal" label="BACKLOG WEEK" value={dashboard.inSprintVsBacklog.backlog.week} />
         </Box>
-      </Card>
-
-      <Card sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 1 }}>Module Snapshot</Typography>
-        <Stack spacing={1.2}>
-          {dashboard.modules.slice(0, 8).map((mod) => (
-            <Stack key={mod.id} direction={{ xs: "column", md: "row" }} spacing={1} alignItems={{ md: "center" }}>
-              <Typography sx={{ width: 260, fontWeight: 700 }}>{mod.name}</Typography>
-              <Box sx={{ flex: 1 }}>
-                <LinearProgress variant="determinate" value={mod.current?.coverage || 0} sx={{ height: 10, borderRadius: 99 }} />
-              </Box>
-              <Typography sx={{ width: 70 }}>{mod.current?.coverage}%</Typography>
-              <StatusBadge status={mod.current?.status} />
-            </Stack>
-          ))}
-        </Stack>
-      </Card>
+      )}
     </Stack>
   );
 }

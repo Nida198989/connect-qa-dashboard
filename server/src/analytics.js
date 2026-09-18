@@ -298,9 +298,18 @@ function sprintProgress(sprints, updates, modules, config) {
     const completion = pct(totals.totalAutomated, planned);
     const manualPct = pct(totals.manualWritten, planned);
     const executionPct = pct(totals.testCasesExecuted, planned);
+    const inSprintAutoExecuted = num(sprint.inSprintAutoExecuted);
+    const inSprintAutoPassed = num(sprint.inSprintAutoPassed);
     return {
       ...sprint,
       ...totals,
+      inSprintAutoExecuted,
+      inSprintAutoPassed,
+      inSprintAutoFailed: num(sprint.inSprintAutoFailed),
+      inSprintAutoBlocked: num(sprint.inSprintAutoBlocked),
+      inSprintExecutionNotes: sprint.inSprintExecutionNotes || "",
+      inSprintExecutionPassPct: pct(inSprintAutoPassed, inSprintAutoExecuted),
+      sprintClosed: Boolean(sprint.endDate) && dayjs().isSameOrAfter(dayjs(sprint.endDate), "day"),
       remaining: Math.max(0, planned - totals.totalAutomated),
       completion,
       manualPct,

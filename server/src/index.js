@@ -470,6 +470,12 @@ app.post("/api/sprints", auth(["lead", "admin"]), (req, res) => {
     startDate,
     endDate,
     plannedTestCases: Number(plannedTestCases) || 0,
+    inSprintAutoExecuted: 0,
+    inSprintAutoPassed: 0,
+    inSprintAutoFailed: 0,
+    inSprintAutoBlocked: 0,
+    inSprintExecutionNotes: "",
+    inSprintExecutionRecordedAt: "",
   };
   saveDb((state) => {
     state.sprints.push(sprint);
@@ -478,19 +484,48 @@ app.post("/api/sprints", auth(["lead", "admin"]), (req, res) => {
   res.json(sprint);
 });
 
-app.put("/api/sprints/:id", auth(["lead", "admin"]), (req, res) => {
+function sprintExecutionFields(body, current = {}) {
+  const executed = body.inSprintAutoExecuted != null ? Number(body.inSprintAutoExecuted) : Number(current.inSprintAutoExecuted || 0);
+  const passed = body.inSprintAutoPassed != null ? Number(body.inSprintAutoPassed) : Number(current.inSprintAutoPassed || 0);
+  const failed = body.inSprintAutoFailed != null ? Number(body.inSprintAutoFailed) : Number(current.inSprintAutoFailed || 0);
+  const blocked = body.inSprintAutoBlocked != null ? Number(body.inSprintAutoBlocked) : Number(current.inSprintAutoBlocked || 0);
+  return {
+    inSprintAutoExecuted: Number.isFinite(executed) ? Math.max(0, executed) : 0,
+    inSprintAutoPassed: Number.isFinite(passed) ? Math.max(0, passed) : 0,
+    inSprintAutoFailed: Number.isFinite(failed) ? Math.max(0, failed) : 0,
+    inSprintAutoBlocked: Number.isFinite(blocked) ? Math.max(0, blocked) : 0,
+    inSprintExecutionNotes: body.inSprintExecutionNotes != null ? String(body.inSprintExecutionNotes) : current.inSprintExecutionNotes || "",
+    inSprintExecutionRecordedAt:
+      body.inSprintAutoExecuted != null ||
+      body.inSprintAutoPassed != null ||
+      body.inSprintAutoFailed != null ||
+      body.inSprintAutoBlocked != null ||
+      body.inSprintExecutionNotes != null
+        ? new Date().toISOString()
+        : current.inSprintExecutionRecordedAt || "",
+  };
+}
+
+app.put("/api/sprints/:id", auth(), (req, res) => {
   const current = getDb().sprints.find((s) => s.id === req.params.id);
   if (!current) return res.status(404).json({ message: "Sprint not found." });
+  const isManager = req.user.role === "admin" || req.user.role === "lead";
+  const execution = sprintExecutionFields(req.body || {}, current);
+  const resultTotal = execution.inSprintAutoPassed + execution.inSprintAutoFailed + execution.inSprintAutoBlocked;
+  if (resultTotal !== execution.inSprintAutoExecuted) {
+    return res.status(400).json({ message: "Passed + Failed + Blocked must equal the in-sprint automation test cases executed." });
+  }
   let updated;
   saveDb((state) => {
     state.sprints = state.sprints.map((sprint) => {
       if (sprint.id !== req.params.id) return sprint;
       updated = {
         ...sprint,
-        sprintName: req.body.sprintName ?? sprint.sprintName,
-        startDate: req.body.startDate ?? sprint.startDate,
-        endDate: req.body.endDate ?? sprint.endDate,
-        plannedTestCases: req.body.plannedTestCases != null ? Number(req.body.plannedTestCases) : sprint.plannedTestCases,
+        ...execution,
+        sprintName: isManager ? req.body.sprintName ?? sprint.sprintName : sprint.sprintName,
+        startDate: isManager ? req.body.startDate ?? sprint.startDate : sprint.startDate,
+        endDate: isManager ? req.body.endDate ?? sprint.endDate : sprint.endDate,
+        plannedTestCases: isManager && req.body.plannedTestCases != null ? Number(req.body.plannedTestCases) : sprint.plannedTestCases,
       };
       return updated;
     });

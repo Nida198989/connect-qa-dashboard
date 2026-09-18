@@ -222,13 +222,29 @@ export const offline = {
   },
   saveSprint(payload: Record<string, unknown>, id?: string) {
     const db = load();
+    const executionKeys = ["inSprintAutoExecuted", "inSprintAutoPassed", "inSprintAutoFailed", "inSprintAutoBlocked", "inSprintExecutionNotes"];
+    const hasExecution = executionKeys.some((key) => payload[key] != null);
+    const execution: Record<string, unknown> = {
+      inSprintAutoExecuted: Number(payload.inSprintAutoExecuted ?? 0) || 0,
+      inSprintAutoPassed: Number(payload.inSprintAutoPassed ?? 0) || 0,
+      inSprintAutoFailed: Number(payload.inSprintAutoFailed ?? 0) || 0,
+      inSprintAutoBlocked: Number(payload.inSprintAutoBlocked ?? 0) || 0,
+      inSprintExecutionNotes: String(payload.inSprintExecutionNotes || ""),
+    };
+    if (hasExecution) {
+      const resultTotal = Number(execution.inSprintAutoPassed) + Number(execution.inSprintAutoFailed) + Number(execution.inSprintAutoBlocked);
+      if (resultTotal !== Number(execution.inSprintAutoExecuted)) {
+        throw { response: { data: { message: "Passed + Failed + Blocked must equal the in-sprint automation test cases executed." } } };
+      }
+      execution.inSprintExecutionRecordedAt = new Date().toISOString();
+    }
     if (!id) {
-      const created = { id: `sprint-${Date.now()}`, ...payload };
+      const created = { id: `sprint-${Date.now()}`, ...payload, ...execution };
       db.sprints.push(created);
       save(db);
       return created;
     }
-    db.sprints = db.sprints.map((sprint: any) => (sprint.id === id ? { ...sprint, ...payload } : sprint));
+    db.sprints = db.sprints.map((sprint: any) => (sprint.id === id ? { ...sprint, ...payload, ...(hasExecution ? execution : {}) } : sprint));
     save(db);
     return db.sprints.find((s: any) => s.id === id);
   },

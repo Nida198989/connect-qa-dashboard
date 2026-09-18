@@ -266,9 +266,18 @@ function sprintProgress(sprints, updates, config) {
     const rows = updates.filter((u) => u.sprintId === sprint.id);
     const planned = num(sprint.plannedTestCases);
     const totals = periodTotals(rows);
+    const inSprintAutoExecuted = num(sprint.inSprintAutoExecuted);
+    const inSprintAutoPassed = num(sprint.inSprintAutoPassed);
     return {
       ...sprint,
       ...totals,
+      inSprintAutoExecuted,
+      inSprintAutoPassed,
+      inSprintAutoFailed: num(sprint.inSprintAutoFailed),
+      inSprintAutoBlocked: num(sprint.inSprintAutoBlocked),
+      inSprintExecutionNotes: sprint.inSprintExecutionNotes || "",
+      inSprintExecutionPassPct: pct(inSprintAutoPassed, inSprintAutoExecuted),
+      sprintClosed: Boolean(sprint.endDate) && dayjs().isSameOrAfter(dayjs(sprint.endDate), "day"),
       remaining: Math.max(0, planned - totals.totalAutomated),
       completion: pct(totals.totalAutomated, planned),
       manualPct: pct(totals.manualWritten, planned),

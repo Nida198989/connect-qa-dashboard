@@ -122,6 +122,9 @@ export function AdminPage() {
 
       <Card sx={{ p: 3 }}>
         <Typography variant="h6">Sprints</Typography>
+        <Typography color="text.secondary" sx={{ mt: 0.5 }}>
+          After a sprint ends, enter the in-sprint automation execution result here or on Sprint Progress.
+        </Typography>
         <Grid container spacing={2} sx={{ mt: 1 }}>
           <Grid item xs={12} md={3}><TextField fullWidth label="Sprint name" value={sprintForm.sprintName} onChange={(e) => setSprintForm({ ...sprintForm, sprintName: e.target.value })} /></Grid>
           <Grid item xs={6} md={2}><TextField fullWidth type="date" label="Start" InputLabelProps={{ shrink: true }} value={sprintForm.startDate} onChange={(e) => setSprintForm({ ...sprintForm, startDate: e.target.value })} /></Grid>
@@ -129,8 +132,38 @@ export function AdminPage() {
           <Grid item xs={6} md={2}><TextField fullWidth type="number" label="Planned TC" value={sprintForm.plannedTestCases} onChange={(e) => setSprintForm({ ...sprintForm, plannedTestCases: Number(e.target.value) })} /></Grid>
           <Grid item xs={6} md={2}><Button variant="contained" onClick={() => run(() => saveSprint(sprintForm), "Sprint added.")}>Add Sprint</Button></Grid>
         </Grid>
-        <div style={{ height: 280, marginTop: 16 }}>
-          <DataGrid rows={sprints} columns={[{ field: "sprintName", flex: 1 }, { field: "startDate", width: 130 }, { field: "endDate", width: 130 }, { field: "plannedTestCases", width: 140 }]} />
+        <div style={{ height: 320, marginTop: 16 }}>
+          <DataGrid
+            rows={sprints}
+            columns={[
+              { field: "sprintName", headerName: "Sprint", flex: 1, minWidth: 140 },
+              { field: "startDate", headerName: "Start", width: 120 },
+              { field: "endDate", headerName: "End", width: 120 },
+              { field: "plannedTestCases", headerName: "Planned TC", width: 120 },
+              { field: "inSprintAutoExecuted", headerName: "Auto Executed", width: 130, type: "number", editable: true },
+              { field: "inSprintAutoPassed", headerName: "Passed", width: 100, type: "number", editable: true },
+              { field: "inSprintAutoFailed", headerName: "Failed", width: 100, type: "number", editable: true },
+              { field: "inSprintAutoBlocked", headerName: "Blocked", width: 100, type: "number", editable: true },
+            ]}
+            processRowUpdate={async (next) => {
+              await saveSprint(
+                {
+                  sprintName: next.sprintName,
+                  startDate: next.startDate,
+                  endDate: next.endDate,
+                  plannedTestCases: next.plannedTestCases,
+                  inSprintAutoExecuted: Number(next.inSprintAutoExecuted || 0),
+                  inSprintAutoPassed: Number(next.inSprintAutoPassed || 0),
+                  inSprintAutoFailed: Number(next.inSprintAutoFailed || 0),
+                  inSprintAutoBlocked: Number(next.inSprintAutoBlocked || 0),
+                  inSprintExecutionNotes: next.inSprintExecutionNotes || "",
+                },
+                next.id
+              );
+              await refresh();
+              return next;
+            }}
+          />
         </div>
       </Card>
 

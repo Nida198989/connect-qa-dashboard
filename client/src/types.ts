@@ -45,6 +45,14 @@ export interface Sprint {
   startDate: string;
   endDate: string;
   plannedTestCases: number;
+  inSprintAutoExecuted?: number;
+  inSprintAutoPassed?: number;
+  inSprintAutoFailed?: number;
+  inSprintAutoBlocked?: number;
+  inSprintExecutionNotes?: string;
+  inSprintExecutionRecordedAt?: string;
+  inSprintExecutionPassPct?: number;
+  sprintClosed?: boolean;
   inSprintAutomated?: number;
   backlogAutomated?: number;
   uiAutomated?: number;

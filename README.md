@@ -1,12 +1,10 @@
-# Connect QA Daily Reporting & Automation Dashboard
+# QA Delivery Dashboard
 
-A client-ready **QA Command Center** for the Connect program. QA engineers enter daily automation and testing progress. The system calculates weekly, sprint, module, UI, API, team, and overall coverage from live data — nothing on the dashboard is hard-coded.
+A client-ready QA reporting dashboard for Connect and Force. QA engineers enter daily testing and automation progress. The system calculates weekly, sprint, module, UI, API, and coverage metrics from live data — nothing on the dashboard is hard-coded.
 
 ## Live URL
 
-https://nida198989.github.io/connect-qa-dashboard/
-
-Sign in with `nida.naaz@connect.qa` / `Connect@123`.
+https://nida198989.github.io/qa-dashboard/
 
 ## Stack
 
@@ -29,15 +27,6 @@ npm run dev
 Then open [http://localhost:5173](http://localhost:5173).
 
 The API runs on [http://localhost:4000](http://localhost:4000). Vite proxies `/api` to the server.
-
-### Accounts
-
-Password: `Connect@123`
-
-| Role | Email |
-| --- | --- |
-| QA Lead | `nida.naaz@connect.qa` |
-| Admin | `admin@connect.qa` |
 
 The dashboard starts empty. The QA team adds names, modules, sprints, baselines, and daily progress.
 

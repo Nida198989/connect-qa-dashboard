@@ -4,8 +4,8 @@ import { useAuth } from "../auth";
 
 export function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("nida.naaz@connect.qa");
-  const [password, setPassword] = useState("Connect@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +22,7 @@ export function LoginPage() {
       <Card sx={{ width: "min(460px, 100%)", p: 4 }}>
         <Typography variant="h5">QA Delivery Dashboard</Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          Connect & Force QA reporting — daily updates, automation, execution, and client status.
+          QA reporting for daily updates, automation, execution, and delivery status.
         </Typography>
         <Stack
           component="form"

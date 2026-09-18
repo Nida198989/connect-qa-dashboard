@@ -1,4 +1,4 @@
-import { Box, Card, Typography } from "@mui/material";
+import { Card, Typography } from "@mui/material";
 
 const palettes: Record<string, { bg: string; accent: string; label: string }> = {
   blue: { bg: "linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)", accent: "#dbeafe", label: "#bfdbfe" },
@@ -23,20 +23,67 @@ export function KpiCard({
 }) {
   const palette = palettes[color];
   return (
-    <Card sx={{ p: 2.2, color: "white", background: palette.bg, minHeight: 118 }}>
-      <Typography variant="caption" sx={{ color: palette.label, fontWeight: 800, letterSpacing: 0.8 }}>
+    <Card
+      sx={{
+        p: 2,
+        color: "white",
+        background: palette.bg,
+        width: "100%",
+        height: 132,
+        minHeight: 132,
+        maxHeight: 132,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        boxSizing: "border-box",
+        overflow: "hidden",
+      }}
+    >
+      <Typography
+        variant="caption"
+        sx={{
+          color: palette.label,
+          fontWeight: 800,
+          letterSpacing: 0.6,
+          lineHeight: 1.25,
+          minHeight: 32,
+          maxHeight: 32,
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
         {label}
       </Typography>
-      <Typography variant="h4" sx={{ mt: 0.6, color: "white" }}>
+      <Typography
+        variant="h4"
+        sx={{
+          color: "white",
+          lineHeight: 1,
+          fontSize: { xs: "1.7rem", md: "1.85rem" },
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {value}
       </Typography>
-      {hint && (
-        <Box sx={{ mt: 0.6 }}>
-          <Typography variant="caption" sx={{ color: palette.accent }}>
-            {hint}
-          </Typography>
-        </Box>
-      )}
+      <Typography
+        variant="caption"
+        sx={{
+          color: palette.accent,
+          minHeight: 18,
+          maxHeight: 18,
+          lineHeight: 1.2,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          visibility: hint ? "visible" : "hidden",
+        }}
+      >
+        {hint || "placeholder"}
+      </Typography>
     </Card>
   );
 }

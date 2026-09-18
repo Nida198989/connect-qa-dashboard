@@ -60,18 +60,24 @@ export function DashboardPage() {
       <FilterBar filters={filters} onChange={setFilters} onRefresh={refresh} users={users} modules={modules} sprints={sprints} hideQa={clientView} />
       {loading && <LinearProgress />}
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="slate" label="TOTAL TC" value={dashboard.kpis.totalTestCases} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="purple" label="MANUAL TEST CASES" value={dashboard.kpis.manualWritten} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="blue" label="UI AUTOMATED" value={dashboard.kpis.uiAutomated} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="teal" label="API AUTOMATED" value={dashboard.kpis.apiAutomated} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="green" label="TOTAL AUTOMATED" value={dashboard.kpis.totalAutomated} hint={dashboard.kpis.countingMode === "unique_test_cases" ? "Unique TCs, no UI+API double count" : "Configured counting model"} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="orange" label="AUTOMATION COVERAGE" value={`${dashboard.kpis.automationCoverage}%`} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="teal" label="APIS RECORDED" value={dashboard.kpis.apiRecorded} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="purple" label="API COVERAGE" value={`${dashboard.kpis.apiCoverage}%`} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="blue" label="IN-SPRINT AUTOMATED" value={dashboard.kpis.inSprintAutomated} /></Grid>
-        <Grid item xs={12} sm={6} md={2.4}><KpiCard color="orange" label="BACKLOG AUTOMATED" value={dashboard.kpis.backlogAutomated} /></Grid>
-      </Grid>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", md: "repeat(5, minmax(0, 1fr))" },
+          gap: 2,
+        }}
+      >
+        <KpiCard color="slate" label="TOTAL TC" value={dashboard.kpis.totalTestCases} />
+        <KpiCard color="purple" label="MANUAL TEST CASES" value={dashboard.kpis.manualWritten} />
+        <KpiCard color="blue" label="UI AUTOMATED" value={dashboard.kpis.uiAutomated} />
+        <KpiCard color="teal" label="API AUTOMATED" value={dashboard.kpis.apiAutomated} />
+        <KpiCard color="green" label="TOTAL AUTOMATED" value={dashboard.kpis.totalAutomated} hint={dashboard.kpis.countingMode === "unique_test_cases" ? "Unique TCs, no UI+API double count" : "Configured counting model"} />
+        <KpiCard color="orange" label="AUTOMATION COVERAGE" value={`${dashboard.kpis.automationCoverage}%`} />
+        <KpiCard color="teal" label="APIS RECORDED" value={dashboard.kpis.apiRecorded} />
+        <KpiCard color="purple" label="API COVERAGE" value={`${dashboard.kpis.apiCoverage}%`} />
+        <KpiCard color="blue" label="IN-SPRINT AUTOMATED" value={dashboard.kpis.inSprintAutomated} />
+        <KpiCard color="orange" label="BACKLOG AUTOMATED" value={dashboard.kpis.backlogAutomated} />
+      </Box>
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={8}>
@@ -124,14 +130,14 @@ export function DashboardPage() {
           </Card>
         </Grid>
         <Grid item xs={12} md={5}>
-          <Grid container spacing={1.5}>
-            <Grid item xs={6}><KpiCard color="blue" label="IN-SPRINT TODAY" value={dashboard.inSprintVsBacklog.inSprint.today} /></Grid>
-            <Grid item xs={6}><KpiCard color="orange" label="BACKLOG TODAY" value={dashboard.inSprintVsBacklog.backlog.today} /></Grid>
-            <Grid item xs={6}><KpiCard color="purple" label="IN-SPRINT WEEK" value={dashboard.inSprintVsBacklog.inSprint.week} /></Grid>
-            <Grid item xs={6}><KpiCard color="teal" label="BACKLOG WEEK" value={dashboard.inSprintVsBacklog.backlog.week} /></Grid>
-            <Grid item xs={6}><KpiCard color="green" label="IN-SPRINT SPRINT" value={dashboard.inSprintVsBacklog.inSprint.sprint} /></Grid>
-            <Grid item xs={6}><KpiCard color="slate" label="BACKLOG SPRINT" value={dashboard.inSprintVsBacklog.backlog.sprint} /></Grid>
-          </Grid>
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 1.5 }}>
+            <KpiCard color="blue" label="IN-SPRINT TODAY" value={dashboard.inSprintVsBacklog.inSprint.today} />
+            <KpiCard color="orange" label="BACKLOG TODAY" value={dashboard.inSprintVsBacklog.backlog.today} />
+            <KpiCard color="purple" label="IN-SPRINT WEEK" value={dashboard.inSprintVsBacklog.inSprint.week} />
+            <KpiCard color="teal" label="BACKLOG WEEK" value={dashboard.inSprintVsBacklog.backlog.week} />
+            <KpiCard color="green" label="IN-SPRINT SPRINT" value={dashboard.inSprintVsBacklog.inSprint.sprint} />
+            <KpiCard color="slate" label="BACKLOG SPRINT" value={dashboard.inSprintVsBacklog.backlog.sprint} />
+          </Box>
         </Grid>
       </Grid>
 

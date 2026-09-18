@@ -95,8 +95,10 @@ export function AppShell() {
         className="no-print"
         sx={{
           width: drawerWidth,
+          flexShrink: 0,
           [`& .MuiDrawer-paper`]: {
             width: drawerWidth,
+            boxSizing: "border-box",
             bgcolor: "#111827",
             color: "white",
             borderRight: "1px solid #1f2937",
@@ -128,7 +130,7 @@ export function AppShell() {
           <Typography variant="caption">Signed in as {user?.role?.toUpperCase()}</Typography>
         </Box>
       </Drawer>
-      <Box component="main" sx={{ flexGrow: 1, ml: `${drawerWidth}px`, pt: 11, px: { xs: 2, md: 3 }, pb: 4 }}>
+      <Box component="main" sx={{ flexGrow: 1, minWidth: 0, overflowX: "hidden", pt: 11, px: { xs: 2, md: 3 }, pb: 4 }}>
         <Stack spacing={2.5}>
           <Outlet />
         </Stack>

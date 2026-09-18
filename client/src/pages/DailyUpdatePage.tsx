@@ -248,8 +248,15 @@ export function DailyUpdatePage() {
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Work Type</InputLabel>
-                <Select displayEmpty value={form.workType || ""} label="Work Type" onChange={(e) => set({ workType: e.target.value })}>
+                <InputLabel id="work-type-label" shrink>Work Type</InputLabel>
+                <Select
+                  labelId="work-type-label"
+                  label="Work Type"
+                  notched
+                  displayEmpty
+                  value={form.workType || ""}
+                  onChange={(e) => set({ workType: e.target.value })}
+                >
                   <MenuItem value="">Select work type</MenuItem>
                   {(workTypes.length ? workTypes : [
                     "In-Sprint Automation",

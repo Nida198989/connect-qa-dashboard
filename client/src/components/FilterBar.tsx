@@ -1,4 +1,5 @@
 import { Box, Button, FormControl, InputLabel, MenuItem, Select, Stack, TextField } from "@mui/material";
+import type { ReactNode } from "react";
 import type { Filters, Module, Sprint, User } from "../types";
 
 const presets = [
@@ -11,6 +12,46 @@ const presets = [
   { id: "last_month", label: "Last Month" },
   { id: "custom", label: "Custom Date Range" },
 ];
+
+function FilterSelect({
+  id,
+  label,
+  value,
+  onChange,
+  children,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  return (
+    <FormControl fullWidth size="small" sx={{ minWidth: 0 }}>
+      <InputLabel id={`${id}-label`} shrink htmlFor={id}>
+        {label}
+      </InputLabel>
+      <Select
+        id={id}
+        labelId={`${id}-label`}
+        label={label}
+        notched
+        displayEmpty
+        value={value}
+        onChange={(e) => onChange(String(e.target.value))}
+        sx={{
+          "& .MuiSelect-select": {
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          },
+        }}
+      >
+        {children}
+      </Select>
+    </FormControl>
+  );
+}
 
 export function FilterBar({
   filters,
@@ -33,20 +74,31 @@ export function FilterBar({
   const qaValue = users.some((u) => u.id === filters.userId) ? filters.userId : "";
   const moduleValue = modules.some((m) => m.id === filters.moduleId) ? filters.moduleId : "";
   const sprintValue = sprints.some((s) => s.id === filters.sprintId) ? filters.sprintId : "";
+  const qaUsers = users.filter((u) => u.role !== "admin");
 
   return (
     <Stack spacing={1.5} className="no-print">
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ lg: "center" }} flexWrap="wrap">
-        <FormControl size="small" sx={{ minWidth: 170 }}>
-          <InputLabel>Period</InputLabel>
-          <Select value={filters.preset || "this_week"} label="Period" onChange={(e) => set({ preset: e.target.value })}>
-            {presets.map((p) => (
-              <MenuItem key={p.id} value={p.id}>
-                {p.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+            lg: "repeat(5, minmax(0, 1fr))",
+          },
+          gap: 1.5,
+          alignItems: "center",
+          width: "100%",
+        }}
+      >
+        <FilterSelect id="period" label="Period" value={filters.preset || "this_week"} onChange={(value) => set({ preset: value })}>
+          {presets.map((p) => (
+            <MenuItem key={p.id} value={p.id}>
+              {p.label}
+            </MenuItem>
+          ))}
+        </FilterSelect>
         {filters.preset === "custom" && (
           <>
             <TextField size="small" type="date" label="From" InputLabelProps={{ shrink: true }} value={filters.startDate} onChange={(e) => set({ startDate: e.target.value })} />
@@ -54,64 +106,47 @@ export function FilterBar({
           </>
         )}
         {!hideQa && (
-          <FormControl size="small" sx={{ minWidth: 180 }}>
-            <InputLabel>QA</InputLabel>
-            <Select displayEmpty value={qaValue} label="QA" onChange={(e) => set({ userId: e.target.value })}>
-              <MenuItem value="">All QA</MenuItem>
-              {users.filter((u) => u.role !== "admin").map((u) => (
-                <MenuItem key={u.id} value={u.id}>
-                  {u.name}
-                </MenuItem>
-              ))}
-              {users.filter((u) => u.role !== "admin").length === 0 && (
-                <MenuItem disabled value="__empty">No QA names yet — add them on Daily Update</MenuItem>
-              )}
-            </Select>
-          </FormControl>
+          <FilterSelect id="qa" label="QA" value={qaValue} onChange={(value) => set({ userId: value })}>
+            <MenuItem value="">All QA</MenuItem>
+            {qaUsers.map((u) => (
+              <MenuItem key={u.id} value={u.id}>
+                {u.name}
+              </MenuItem>
+            ))}
+            {qaUsers.length === 0 && <MenuItem disabled value="__empty">No QA names yet — add them on Daily Update</MenuItem>}
+          </FilterSelect>
         )}
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel>Module</InputLabel>
-          <Select displayEmpty value={moduleValue} label="Module" onChange={(e) => set({ moduleId: e.target.value })}>
-            <MenuItem value="">All Modules</MenuItem>
-            {modules.map((m) => (
-              <MenuItem key={m.id} value={m.id}>
-                {m.name}
-              </MenuItem>
-            ))}
-            {modules.length === 0 && (
-              <MenuItem disabled value="__empty">No modules yet — add them on Daily Update</MenuItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel>Sprint</InputLabel>
-          <Select displayEmpty value={sprintValue} label="Sprint" onChange={(e) => set({ sprintId: e.target.value })}>
-            <MenuItem value="">All Sprints</MenuItem>
-            {sprints.map((s) => (
-              <MenuItem key={s.id} value={s.id}>
-                {s.sprintName}
-              </MenuItem>
-            ))}
-            {sprints.length === 0 && (
-              <MenuItem disabled value="__empty">No sprints yet — add them on Daily Update</MenuItem>
-            )}
-          </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Automation Type</InputLabel>
-          <Select displayEmpty value={filters.automationType || ""} label="Automation Type" onChange={(e) => set({ automationType: e.target.value })}>
-            <MenuItem value="">All Types</MenuItem>
-            <MenuItem value="in_sprint">In-Sprint</MenuItem>
-            <MenuItem value="backlog">Backlog</MenuItem>
-            <MenuItem value="ui">UI</MenuItem>
-            <MenuItem value="api">API</MenuItem>
-          </Select>
-        </FormControl>
-        <Box flex={1} />
-        <Button variant="contained" onClick={onRefresh}>
+        <FilterSelect id="module" label="Module" value={moduleValue} onChange={(value) => set({ moduleId: value })}>
+          <MenuItem value="">All Modules</MenuItem>
+          {modules.map((m) => (
+            <MenuItem key={m.id} value={m.id}>
+              {m.name}
+            </MenuItem>
+          ))}
+          {modules.length === 0 && <MenuItem disabled value="__empty">No modules yet — add them on Daily Update</MenuItem>}
+        </FilterSelect>
+        <FilterSelect id="sprint" label="Sprint" value={sprintValue} onChange={(value) => set({ sprintId: value })}>
+          <MenuItem value="">All Sprints</MenuItem>
+          {sprints.map((s) => (
+            <MenuItem key={s.id} value={s.id}>
+              {s.sprintName}
+            </MenuItem>
+          ))}
+          {sprints.length === 0 && <MenuItem disabled value="__empty">No sprints yet — add them on Daily Update</MenuItem>}
+        </FilterSelect>
+        <FilterSelect id="automation-type" label="Automation Type" value={filters.automationType || ""} onChange={(value) => set({ automationType: value })}>
+          <MenuItem value="">All Types</MenuItem>
+          <MenuItem value="in_sprint">In-Sprint</MenuItem>
+          <MenuItem value="backlog">Backlog</MenuItem>
+          <MenuItem value="ui">UI</MenuItem>
+          <MenuItem value="api">API</MenuItem>
+        </FilterSelect>
+      </Box>
+      <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+        <Button variant="contained" onClick={onRefresh} sx={{ height: 40, whiteSpace: "nowrap", px: 2.5 }}>
           Refresh Dashboard
         </Button>
-      </Stack>
+      </Box>
     </Stack>
   );
 }

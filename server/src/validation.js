@@ -60,12 +60,12 @@ function validateAgainstBaselines(db, payload, numbers, existingId) {
   const nextRecorded = snapshot.current.apiRecorded + numbers.apisRecorded;
   const nextTotal = computeTotalAutomated(nextUi, nextApi, config.countingMode);
 
-  if (!config.allowAutomationExceedScope && nextTotal > num(mod.totalTestCases)) {
+  if (num(mod.totalTestCases) > 0 && !config.allowAutomationExceedScope && nextTotal > num(mod.totalTestCases)) {
     errors.push(
       `Automated test cases cannot exceed Total TC (${mod.totalTestCases}) for ${mod.name}. Remaining room: ${Math.max(0, mod.totalTestCases - snapshot.current.totalAutomated)}.`
     );
   }
-  if (!config.allowApiExceedRecorded && nextApi > nextRecorded) {
+  if (nextRecorded > 0 && !config.allowApiExceedRecorded && nextApi > nextRecorded) {
     errors.push("API automated cannot exceed APIs recorded unless an administrator enables that setting.");
   }
   return errors;

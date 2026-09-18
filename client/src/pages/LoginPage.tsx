@@ -47,7 +47,7 @@ export function LoginPage() {
             Sign in
           </Button>
           <Typography variant="body2" color="text.secondary">
-            Demo: nida.naaz@connect.qa, priya.sharma@connect.qa, admin@connect.qa — password Connect@123
+            Sign in, then add QA names, modules, sprints, and daily progress. Nothing is preloaded.
           </Typography>
         </Stack>
       </Card>

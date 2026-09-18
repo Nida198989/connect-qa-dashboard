@@ -16,7 +16,7 @@ import {
 import { DataGrid, type GridColDef } from "@mui/x-data-grid";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
-import { listUpdates, lookupUpdate, resolveQaName, saveUpdate, saveUser } from "../api/client";
+import { listUpdates, lookupUpdate, resolveModule, resolveQaName, resolveSprint, saveUpdate, saveUser } from "../api/client";
 import { useApp } from "../appState";
 import { useAuth } from "../auth";
 import { emptyDailyUpdate, type DailyUpdate } from "../types";
@@ -56,6 +56,8 @@ export function DailyUpdatePage() {
   const qaOptions = users.filter((u) => u.role !== "admin");
   const selectedQa = qaOptions.find((u) => u.id === form.userId) || null;
   const [qaName, setQaName] = useState(selectedQa?.name || (user?.role === "qa" ? user.name : ""));
+  const [moduleName, setModuleName] = useState(modules.find((m) => m.id === form.moduleId)?.name || "");
+  const [sprintName, setSprintName] = useState(sprints.find((s) => s.id === form.sprintId)?.sprintName || "");
 
   const set = (patch: Partial<DailyUpdate>) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -77,6 +79,8 @@ export function DailyUpdatePage() {
       if (found) {
         setForm((prev) => ({ ...prev, ...found }));
         setQaName(found.qaName || qaName);
+        setModuleName(found.moduleName || moduleName);
+        setSprintName(found.sprintName || sprintName);
         setExisting(true);
       } else {
         setExisting(false);
@@ -104,7 +108,7 @@ export function DailyUpdatePage() {
     <Stack spacing={2.5}>
       <Typography variant="h4">Daily Update</Typography>
       <Typography color="text.secondary">
-        One record is kept for the same Date + QA + Module + User Story. Saving again updates the existing entry.
+        One record is kept for the same Date + QA + Module + User Story. Type a new QA, module, or sprint name to add it. Saving again updates the existing entry.
       </Typography>
       <Card sx={{ p: 3 }}>
         <Stack
@@ -116,8 +120,8 @@ export function DailyUpdatePage() {
             setError("");
             setMessage("");
             try {
-              if (!qaName.trim()) {
-                setError("QA name is mandatory.");
+              if (!qaName.trim() || !moduleName.trim() || !sprintName.trim() || !form.workType) {
+                setError("Date, QA name, module, sprint, user story, and work type are mandatory.");
                 return;
               }
               const currentQa = qaOptions.find((u) => u.id === form.userId);
@@ -127,9 +131,13 @@ export function DailyUpdatePage() {
               } else {
                 resolved = await resolveQaName(qaName.trim());
               }
-              const result = await saveUpdate({ ...form, userId: resolved.id }, filters);
-              set({ userId: resolved.id, qaName: resolved.name });
+              const module = await resolveModule(moduleName.trim());
+              const sprint = await resolveSprint(sprintName.trim());
+              const result = await saveUpdate({ ...form, userId: resolved.id, moduleId: module.id, sprintId: sprint.id }, filters);
+              set({ userId: resolved.id, qaName: resolved.name, moduleId: module.id, sprintId: sprint.id });
               setQaName(resolved.name);
+              setModuleName(module.name);
+              setSprintName(sprint.sprintName);
               setMessage(result.replaced ? "Existing daily update was refreshed with the latest values." : "Daily update saved. Dashboards will refresh now.");
               setExisting(true);
               const next = await listUpdates();
@@ -155,6 +163,8 @@ export function DailyUpdatePage() {
             <Grid item xs={12} md={3}>
               <Autocomplete
                 freeSolo
+                autoSelect
+                openOnFocus
                 options={qaOptions}
                 getOptionLabel={(option) => (typeof option === "string" ? option : option.name)}
                 value={selectedQa}
@@ -170,6 +180,7 @@ export function DailyUpdatePage() {
                     set({ userId: value.id, qaName: value.name });
                   }
                 }}
+                noOptionsText="No QA names yet. Type a name to add it."
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -181,24 +192,56 @@ export function DailyUpdatePage() {
               />
             </Grid>
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Module</InputLabel>
-                <Select label="Module" value={form.moduleId} onChange={(e) => set({ moduleId: e.target.value })}>
-                  {modules.map((m) => (
-                    <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                freeSolo
+                autoSelect
+                openOnFocus
+                options={modules}
+                getOptionLabel={(option) => (typeof option === "string" ? option : option.name)}
+                value={modules.find((m) => m.id === form.moduleId) || null}
+                inputValue={moduleName}
+                onInputChange={(_, value) => setModuleName(value)}
+                onChange={(_, value) => {
+                  if (typeof value === "string") {
+                    setModuleName(value);
+                    return;
+                  }
+                  if (value) {
+                    setModuleName(value.name);
+                    set({ moduleId: value.id });
+                  }
+                }}
+                noOptionsText="No modules yet. Type a module name to add it."
+                renderInput={(params) => (
+                  <TextField {...params} label="Module" required helperText="Type a module name to add it." />
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Sprint</InputLabel>
-                <Select label="Sprint" value={form.sprintId} onChange={(e) => set({ sprintId: e.target.value })}>
-                  {sprints.map((s) => (
-                    <MenuItem key={s.id} value={s.id}>{s.sprintName}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                freeSolo
+                autoSelect
+                openOnFocus
+                options={sprints}
+                getOptionLabel={(option) => (typeof option === "string" ? option : option.sprintName)}
+                value={sprints.find((s) => s.id === form.sprintId) || null}
+                inputValue={sprintName}
+                onInputChange={(_, value) => setSprintName(value)}
+                onChange={(_, value) => {
+                  if (typeof value === "string") {
+                    setSprintName(value);
+                    return;
+                  }
+                  if (value) {
+                    setSprintName(value.sprintName);
+                    set({ sprintId: value.id });
+                  }
+                }}
+                noOptionsText="No sprints yet. Type a sprint name to add it."
+                renderInput={(params) => (
+                  <TextField {...params} label="Sprint" required helperText="Type a sprint name to add it." />
+                )}
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField fullWidth label="User Story" value={form.userStory} onChange={(e) => set({ userStory: e.target.value })} placeholder="US-UM-418" />
@@ -206,8 +249,19 @@ export function DailyUpdatePage() {
             <Grid item xs={12} md={6}>
               <FormControl fullWidth>
                 <InputLabel>Work Type</InputLabel>
-                <Select label="Work Type" value={form.workType} onChange={(e) => set({ workType: e.target.value })}>
-                  {workTypes.map((w) => (
+                <Select displayEmpty value={form.workType || ""} label="Work Type" onChange={(e) => set({ workType: e.target.value })}>
+                  <MenuItem value="">Select work type</MenuItem>
+                  {(workTypes.length ? workTypes : [
+                    "In-Sprint Automation",
+                    "Backlog Automation",
+                    "Manual Test Design",
+                    "API Automation",
+                    "UI Automation",
+                    "API Recording",
+                    "Test Execution",
+                    "Defect Validation",
+                    "Other",
+                  ]).map((w) => (
                     <MenuItem key={w} value={w}>{w}</MenuItem>
                   ))}
                 </Select>
@@ -256,6 +310,8 @@ export function DailyUpdatePage() {
                   userId: user?.role === "qa" ? user.id : "",
                 });
                 setQaName(user?.role === "qa" ? user.name : "");
+                setModuleName("");
+                setSprintName("");
                 setExisting(false);
                 setMessage("");
                 setError("");
@@ -277,6 +333,8 @@ export function DailyUpdatePage() {
               const row = params.row as DailyUpdate;
               setForm(row);
               setQaName(row.qaName || "");
+              setModuleName(row.moduleName || "");
+              setSprintName(row.sprintName || "");
               setExisting(true);
             }}
           />

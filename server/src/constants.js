@@ -17,13 +17,10 @@ const DEFAULT_CONFIG = {
   allowAutomationExceedScope: false,
   allowApiExceedRecorded: false,
   thresholds: { green: 80, amber: 50, orange: 20 },
-  currentSprintId: "sprint-19",
-  clientFocus:
-    "Complete remaining UI automation for Public/Private Prospecting and Organization Search, then expand API coverage for Supplier Management.",
-  clientRisks:
-    "Organization Search and Active Profile modules have limited automation; Supplier Impersonation and Notifications have no baseline coverage yet.",
-  clientAchievements:
-    "Login, Homepage, User Management, and Supplier Sync are fully UI automated. API coverage is complete for Homepage and User Management.",
+  currentSprintId: "",
+  clientFocus: "",
+  clientRisks: "",
+  clientAchievements: "",
 };
 
 const BASELINE_MODULES = [

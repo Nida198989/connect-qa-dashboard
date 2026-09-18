@@ -2,7 +2,7 @@ import type { DailyUpdate, DashboardData, Filters, User } from "../types";
 import { bimonthly, buildDashboard, computeTotalAutomated, DEFAULT_CONFIG, moduleSnapshot, weeklyStatus } from "./analytics";
 import { createSeed, WORK_TYPES } from "./seed";
 
-const KEY = "connect-qa-offline-db";
+const KEY = "connect-qa-offline-db-v4";
 const SESSION = "connect-qa-offline-user";
 
 function publicUser(user: any): User {
@@ -119,7 +119,8 @@ export const offline = {
     const db = load();
     const user = currentUser();
     const target = user?.role === "qa" ? user.id : params.userId;
-    return db.dailyUpdates.find((row: any) => uniqueKey(row) === uniqueKey({ ...params, userId: target })) || null;
+    const found = db.dailyUpdates.find((row: any) => uniqueKey(row) === uniqueKey({ ...params, userId: target }));
+    return found ? enrich(found, db) : null;
   },
   saveUpdate(payload: Partial<DailyUpdate>, filters: Filters) {
     const db = load();
@@ -131,9 +132,10 @@ export const offline = {
     const existing = db.dailyUpdates.find((row: any) => uniqueKey(row) === uniqueKey(next));
     const others = db.dailyUpdates.filter((row: any) => row.moduleId === next.moduleId && row.id !== existing?.id);
     const mod = db.modules.find((m: any) => m.id === next.moduleId);
+    if (!mod) throw { response: { data: { message: "Module is required. Type a module name to add it." } } };
     const snapshot = moduleSnapshot(mod, others, db.config);
     const nextTotal = computeTotalAutomated(snapshot.current.uiAutomated + Number(next.uiAutomated || 0), snapshot.current.apiAutomated + Number(next.apiAutomated || 0), db.config.countingMode);
-    if (!db.config.allowAutomationExceedScope && nextTotal > Number(mod.totalTestCases)) {
+    if (Number(mod.totalTestCases) > 0 && !db.config.allowAutomationExceedScope && nextTotal > Number(mod.totalTestCases)) {
       throw { response: { data: { message: `Automated test cases cannot exceed Total TC (${mod.totalTestCases}) for ${mod.name}.` } } };
     }
     const now = new Date().toISOString();
@@ -175,6 +177,33 @@ export const offline = {
     const user = currentUser();
     if (user?.role === "qa") return this.saveUser({ name: trimmed }, user.id);
     return this.saveUser({ name: trimmed, role: "qa" });
+  },
+  resolveModule(name: string) {
+    const db = load();
+    const existing = db.modules.find((m: any) => m.name.toLowerCase() === name.trim().toLowerCase());
+    if (existing) return existing;
+    return this.saveModule({
+      name: name.trim(),
+      totalTestCases: 0,
+      manualWritten: 0,
+      uiAutomated: 0,
+      apiRecorded: 0,
+      apiAutomated: 0,
+    });
+  },
+  resolveSprint(sprintName: string) {
+    const db = load();
+    const existing = db.sprints.find((s: any) => s.sprintName.toLowerCase() === sprintName.trim().toLowerCase());
+    if (existing) return existing;
+    const today = new Date().toISOString().slice(0, 10);
+    const created = this.saveSprint({
+      sprintName: sprintName.trim(),
+      startDate: today,
+      endDate: today,
+      plannedTestCases: 0,
+    });
+    if (!db.config.currentSprintId) this.saveConfig({ currentSprintId: created.id });
+    return created;
   },
   listUsers() {
     return load().users.map(publicUser);

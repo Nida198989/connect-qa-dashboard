@@ -11,13 +11,10 @@ dayjs.extend(isSameOrBefore);
 const DEFAULT_CONFIG = {
   countingMode: "unique_test_cases",
   thresholds: { green: 80, amber: 50, orange: 20 },
-  currentSprintId: "sprint-19",
-  clientFocus:
-    "Complete remaining UI automation for Public/Private Prospecting and Organization Search, then expand API coverage for Supplier Management.",
-  clientRisks:
-    "Organization Search and Active Profile modules have limited automation; Supplier Impersonation and Notifications have no baseline coverage yet.",
-  clientAchievements:
-    "Login, Homepage, User Management, and Supplier Sync are fully UI automated. API coverage is complete for Homepage and User Management.",
+  currentSprintId: "",
+  clientFocus: "",
+  clientRisks: "",
+  clientAchievements: "",
 };
 
 export function num(value) {
@@ -56,9 +53,17 @@ function resolveRange(filters, sprints, config) {
       return { start: last.startOf("isoWeek").format("YYYY-MM-DD"), end: last.endOf("isoWeek").format("YYYY-MM-DD"), label: "Last Week" };
     }
     case "current_sprint":
-      return { start: currentSprint?.startDate, end: currentSprint?.endDate, label: currentSprint?.sprintName || "Current Sprint" };
+      return {
+        start: currentSprint?.startDate || today.startOf("isoWeek").format("YYYY-MM-DD"),
+        end: currentSprint?.endDate || today.endOf("isoWeek").format("YYYY-MM-DD"),
+        label: currentSprint?.sprintName || "Current Sprint",
+      };
     case "last_sprint":
-      return { start: lastSprint?.startDate, end: lastSprint?.endDate, label: lastSprint?.sprintName || "Last Sprint" };
+      return {
+        start: lastSprint?.startDate || today.subtract(1, "week").startOf("isoWeek").format("YYYY-MM-DD"),
+        end: lastSprint?.endDate || today.subtract(1, "week").endOf("isoWeek").format("YYYY-MM-DD"),
+        label: lastSprint?.sprintName || "Last Sprint",
+      };
     case "this_month":
       return { start: today.startOf("month").format("YYYY-MM-DD"), end: today.endOf("month").format("YYYY-MM-DD"), label: "This Month" };
     case "last_month": {

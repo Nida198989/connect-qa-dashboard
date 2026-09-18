@@ -30,22 +30,18 @@ Then open [http://localhost:5173](http://localhost:5173).
 
 The API runs on [http://localhost:4000](http://localhost:4000). Vite proxies `/api` to the server.
 
-### Demo accounts
+### Accounts
 
-Password for every seeded user: `Connect@123`
+Password: `Connect@123`
 
-| Role | Email | Can do |
-| --- | --- | --- |
-| QA Lead | `nida.naaz@connect.qa` | All dashboards, edit any daily update, manage modules/sprints, export |
-| QA User | `priya.sharma@connect.qa` | Own daily updates + view dashboards |
-| Admin | `admin@connect.qa` | Users, baseline scope, counting model, coverage thresholds |
+| Role | Email |
+| --- | --- |
+| QA Lead | `nida.naaz@connect.qa` |
+| Admin | `admin@connect.qa` |
 
-Other QA users: `rahul.mehta@connect.qa`, `ananya.iyer@connect.qa`, `vikram.patel@connect.qa`.
+The dashboard starts empty. The QA team adds names, modules, sprints, baselines, and daily progress.
 
-QA names are editable:
-
-- On **Daily Update**, type a new name or change the selected name. Saving applies it across reports.
-- On **Administration → QA names**, double-click a name to rename it. Leads and admins can also add QA members there.
+On **Daily Update**, type a QA name, module, or sprint to add it. Existing values stay selectable in the dropdowns.
 
 ## How numbers work
 
@@ -77,7 +73,7 @@ Saving again updates the same record and writes an audit entry.
 1. Dashboard — executive KPIs, daily trend, in-sprint vs backlog
 2. Daily Update — QA data entry
 3. Module Progress — coverage table + drill-down
-4. Sprint Progress — Sprint 17 / 18 / 19
+4. Sprint Progress
 5. Team Progress — workload visibility, not ranking
 6. API Automation
 7. UI Automation
@@ -96,6 +92,6 @@ npm start --prefix server
 
 The Express server serves `client/dist` when that folder exists.
 
-## Reset sample data
+## Reset to empty
 
-Sign in as admin and `POST /api/seed`, or delete `server/data/db.json` and restart the server.
+Delete `server/data/db.json` and restart the server, or sign in as admin and `POST /api/seed`.

@@ -98,6 +98,18 @@ export async function resolveQaName(name: string) {
   return data as User;
 }
 
+export async function resolveModule(name: string) {
+  if (isOfflineMode()) return offline.resolveModule(name);
+  const { data } = await api.post("/modules/resolve", { name });
+  return data;
+}
+
+export async function resolveSprint(sprintName: string) {
+  if (isOfflineMode()) return offline.resolveSprint(sprintName);
+  const { data } = await api.post("/sprints/resolve", { sprintName });
+  return data;
+}
+
 export async function listUsers() {
   if (isOfflineMode()) return offline.listUsers();
   const { data } = await api.get("/users");

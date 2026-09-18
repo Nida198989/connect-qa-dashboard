@@ -28,11 +28,15 @@ export function SprintProgressPage() {
       <Typography variant="h4">Sprint Progress</Typography>
       <FilterBar filters={filters} onChange={setFilters} onRefresh={refresh} users={users} modules={modules} sprints={sprints} />
       {loading && <LinearProgress />}
-      <ToggleButtonGroup exclusive value={sprint?.id} onChange={(_, value) => value && setSelected(value)}>
+      {dashboard.sprints.length > 0 ? (
+      <ToggleButtonGroup exclusive value={sprint?.id || ""} onChange={(_, value) => value && setSelected(value)}>
         {dashboard.sprints.map((s) => (
           <ToggleButton key={s.id} value={s.id}>{s.sprintName}</ToggleButton>
         ))}
       </ToggleButtonGroup>
+      ) : (
+        <Typography color="text.secondary">No sprints yet. Add a sprint from Daily Update or Administration.</Typography>
+      )}
       {sprint && (
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={2}><KpiCard color="slate" label="PLANNED" value={sprint.plannedTestCases} /></Grid>

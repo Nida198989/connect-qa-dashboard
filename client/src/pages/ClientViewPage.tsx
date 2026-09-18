@@ -31,19 +31,19 @@ export function ClientViewPage() {
         <Grid item xs={12} md={4}>
           <Card sx={{ p: 2.5, minHeight: 180, background: "linear-gradient(135deg,#ecfeff,#ffffff)" }}>
             <Typography variant="h6">Key achievements</Typography>
-            <Typography sx={{ mt: 1 }}>{dashboard.config.clientAchievements}</Typography>
+            <Typography sx={{ mt: 1 }}>{dashboard.config.clientAchievements || "Add key achievements in Administration."}</Typography>
           </Card>
         </Grid>
         <Grid item xs={12} md={4}>
           <Card sx={{ p: 2.5, minHeight: 180, background: "linear-gradient(135deg,#f5f3ff,#ffffff)" }}>
             <Typography variant="h6">Current focus</Typography>
-            <Typography sx={{ mt: 1 }}>{dashboard.config.clientFocus}</Typography>
+            <Typography sx={{ mt: 1 }}>{dashboard.config.clientFocus || "Add current focus in Administration."}</Typography>
           </Card>
         </Grid>
         <Grid item xs={12} md={4}>
           <Card sx={{ p: 2.5, minHeight: 180, background: "linear-gradient(135deg,#fff7ed,#ffffff)" }}>
             <Typography variant="h6">Risks / dependencies</Typography>
-            <Typography sx={{ mt: 1 }}>{dashboard.config.clientRisks}</Typography>
+            <Typography sx={{ mt: 1 }}>{dashboard.config.clientRisks || "Add risks and dependencies in Administration."}</Typography>
           </Card>
         </Grid>
       </Grid>

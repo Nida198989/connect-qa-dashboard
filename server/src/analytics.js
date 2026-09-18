@@ -53,14 +53,14 @@ function resolveRange(filters, sprints, config) {
     }
     case "current_sprint":
       return {
-        start: currentSprint?.startDate,
-        end: currentSprint?.endDate,
+        start: currentSprint?.startDate || today.startOf("isoWeek").format("YYYY-MM-DD"),
+        end: currentSprint?.endDate || today.endOf("isoWeek").format("YYYY-MM-DD"),
         label: currentSprint?.sprintName || "Current Sprint",
       };
     case "last_sprint":
       return {
-        start: lastSprint?.startDate,
-        end: lastSprint?.endDate,
+        start: lastSprint?.startDate || today.subtract(1, "week").startOf("isoWeek").format("YYYY-MM-DD"),
+        end: lastSprint?.endDate || today.subtract(1, "week").endOf("isoWeek").format("YYYY-MM-DD"),
         label: lastSprint?.sprintName || "Last Sprint",
       };
     case "this_month":

@@ -30,12 +30,16 @@ export function FilterBar({
   hideQa?: boolean;
 }) {
   const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
+  const qaValue = users.some((u) => u.id === filters.userId) ? filters.userId : "";
+  const moduleValue = modules.some((m) => m.id === filters.moduleId) ? filters.moduleId : "";
+  const sprintValue = sprints.some((s) => s.id === filters.sprintId) ? filters.sprintId : "";
+
   return (
     <Stack spacing={1.5} className="no-print">
-      <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ lg: "center" }}>
+      <Stack direction={{ xs: "column", lg: "row" }} spacing={1.5} alignItems={{ lg: "center" }} flexWrap="wrap">
         <FormControl size="small" sx={{ minWidth: 170 }}>
           <InputLabel>Period</InputLabel>
-          <Select value={filters.preset} label="Period" onChange={(e) => set({ preset: e.target.value })}>
+          <Select value={filters.preset || "this_week"} label="Period" onChange={(e) => set({ preset: e.target.value })}>
             {presets.map((p) => (
               <MenuItem key={p.id} value={p.id}>
                 {p.label}
@@ -52,41 +56,50 @@ export function FilterBar({
         {!hideQa && (
           <FormControl size="small" sx={{ minWidth: 180 }}>
             <InputLabel>QA</InputLabel>
-            <Select value={filters.userId} label="QA" onChange={(e) => set({ userId: e.target.value })}>
+            <Select displayEmpty value={qaValue} label="QA" onChange={(e) => set({ userId: e.target.value })}>
               <MenuItem value="">All QA</MenuItem>
               {users.filter((u) => u.role !== "admin").map((u) => (
                 <MenuItem key={u.id} value={u.id}>
                   {u.name}
                 </MenuItem>
               ))}
+              {users.filter((u) => u.role !== "admin").length === 0 && (
+                <MenuItem disabled value="__empty">No QA names yet — add them on Daily Update</MenuItem>
+              )}
             </Select>
           </FormControl>
         )}
         <FormControl size="small" sx={{ minWidth: 220 }}>
           <InputLabel>Module</InputLabel>
-          <Select value={filters.moduleId} label="Module" onChange={(e) => set({ moduleId: e.target.value })}>
+          <Select displayEmpty value={moduleValue} label="Module" onChange={(e) => set({ moduleId: e.target.value })}>
             <MenuItem value="">All Modules</MenuItem>
             {modules.map((m) => (
               <MenuItem key={m.id} value={m.id}>
                 {m.name}
               </MenuItem>
             ))}
+            {modules.length === 0 && (
+              <MenuItem disabled value="__empty">No modules yet — add them on Daily Update</MenuItem>
+            )}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel>Sprint</InputLabel>
-          <Select value={filters.sprintId} label="Sprint" onChange={(e) => set({ sprintId: e.target.value })}>
+          <Select displayEmpty value={sprintValue} label="Sprint" onChange={(e) => set({ sprintId: e.target.value })}>
             <MenuItem value="">All Sprints</MenuItem>
             {sprints.map((s) => (
               <MenuItem key={s.id} value={s.id}>
                 {s.sprintName}
               </MenuItem>
             ))}
+            {sprints.length === 0 && (
+              <MenuItem disabled value="__empty">No sprints yet — add them on Daily Update</MenuItem>
+            )}
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel>Automation Type</InputLabel>
-          <Select value={filters.automationType} label="Automation Type" onChange={(e) => set({ automationType: e.target.value })}>
+          <Select displayEmpty value={filters.automationType || ""} label="Automation Type" onChange={(e) => set({ automationType: e.target.value })}>
             <MenuItem value="">All Types</MenuItem>
             <MenuItem value="in_sprint">In-Sprint</MenuItem>
             <MenuItem value="backlog">Backlog</MenuItem>

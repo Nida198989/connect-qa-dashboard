@@ -174,7 +174,7 @@ app.get("/api/daily-updates/lookup", auth(), (req, res) => {
   const match = getDb().dailyUpdates.find(
     (row) => uniqueKey(row) === uniqueKey({ date, userId: targetUser, moduleId, userStory })
   );
-  res.json({ existing: match || null });
+  res.json({ existing: match ? enrichUpdate(match, getDb()) : null });
 });
 
 app.post("/api/daily-updates", auth(), (req, res) => {
@@ -365,10 +365,56 @@ app.put("/api/users/:id", auth(), (req, res) => {
   res.json(publicUser(updated));
 });
 
+app.post("/api/modules/resolve", auth(), (req, res) => {
+  const name = String(req.body?.name || "").trim();
+  if (!name) return res.status(400).json({ message: "Module is mandatory." });
+  const db = getDb();
+  const existing = db.modules.find((m) => m.name.toLowerCase() === name.toLowerCase());
+  if (existing) return res.json(existing);
+  const mod = {
+    id: uuid(),
+    name,
+    totalTestCases: Number(req.body.totalTestCases) || 0,
+    manualWritten: 0,
+    uiAutomated: 0,
+    apiRecorded: 0,
+    apiAutomated: 0,
+    baselineLocked: false,
+  };
+  saveDb((state) => {
+    state.modules.push(mod);
+    return state;
+  });
+  res.json(mod);
+});
+
+app.post("/api/sprints/resolve", auth(), (req, res) => {
+  const sprintName = String(req.body?.sprintName || req.body?.name || "").trim();
+  if (!sprintName) return res.status(400).json({ message: "Sprint is mandatory." });
+  const db = getDb();
+  const existing = db.sprints.find((s) => s.sprintName.toLowerCase() === sprintName.toLowerCase());
+  if (existing) return res.json(existing);
+  const today = new Date().toISOString().slice(0, 10);
+  const end = new Date(Date.now() + 13 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const sprint = {
+    id: uuid(),
+    sprintName,
+    startDate: req.body.startDate || today,
+    endDate: req.body.endDate || end,
+    plannedTestCases: Number(req.body.plannedTestCases) || 0,
+  };
+  saveDb((state) => {
+    state.sprints.push(sprint);
+    if (!state.config.currentSprintId) state.config.currentSprintId = sprint.id;
+    return state;
+  });
+  res.json(sprint);
+});
+
 app.post("/api/modules", auth(["lead", "admin"]), (req, res) => {
   const body = req.body || {};
-  if (!body.name || body.totalTestCases == null) {
-    return res.status(400).json({ message: "Module name and total test cases are required." });
+  if (!body.name) {
+    return res.status(400).json({ message: "Module name is required." });
   }
   const mod = {
     id: uuid(),

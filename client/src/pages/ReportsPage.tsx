@@ -19,8 +19,8 @@ export function ReportsPage() {
   const { user } = useAuth();
   const { filters } = useApp();
   const [weekStart, setWeekStart] = useState(dayjs().startOf("isoWeek").format("YYYY-MM-DD"));
-  const [biStart, setBiStart] = useState("2026-08-01");
-  const [biEnd, setBiEnd] = useState("2026-09-17");
+  const [biStart, setBiStart] = useState(dayjs().subtract(1, "month").startOf("month").format("YYYY-MM-DD"));
+  const [biEnd, setBiEnd] = useState(dayjs().endOf("month").format("YYYY-MM-DD"));
   const [weekly, setWeekly] = useState<any>(null);
   const [bimonthly, setBimonthly] = useState<any>(null);
   const [error, setError] = useState("");
@@ -108,8 +108,12 @@ export function ReportsPage() {
             setBiEnd(end);
             getBimonthly(start, end).then(setBimonthly);
           }} sx={{ minWidth: 220 }}>
-            <MenuItem value="2026-07-01|2026-08-31">July–August</MenuItem>
-            <MenuItem value="2026-08-01|2026-09-30">August–September</MenuItem>
+            <MenuItem value={`${dayjs().subtract(2, "month").startOf("month").format("YYYY-MM-DD")}|${dayjs().subtract(1, "month").endOf("month").format("YYYY-MM-DD")}`}>
+              Previous two months
+            </MenuItem>
+            <MenuItem value={`${dayjs().subtract(1, "month").startOf("month").format("YYYY-MM-DD")}|${dayjs().endOf("month").format("YYYY-MM-DD")}`}>
+              Last month + this month
+            </MenuItem>
             <MenuItem value={`${biStart}|${biEnd}`}>Custom</MenuItem>
           </TextField>
           <TextField type="date" label="From" InputLabelProps={{ shrink: true }} value={biStart} onChange={(e) => setBiStart(e.target.value)} />
